@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  gameActionSchema,
   roomCreateSchema,
   roomJoinSchema,
   roomLeaveSchema,
+  roomReadySchema,
 } from "../src/schemas.js";
 
 describe("roomCreateSchema", () => {
@@ -15,7 +17,8 @@ describe("roomCreateSchema", () => {
   });
 
   it.each([
-    [{ gameId: "mystery", displayName: "Sam" }],
+    [{ gameId: "", displayName: "Sam" }],
+    [{ gameId: 5, displayName: "Sam" }],
     [{ gameId: "court", displayName: "   " }],
     [{ gameId: "court", displayName: "x".repeat(25) }],
     [{ gameId: "court", displayName: "a\u0000b" }],
@@ -40,6 +43,22 @@ describe("roomJoinSchema", () => {
       expect(result.success).toBe(false);
     },
   );
+});
+
+describe("gameActionSchema", () => {
+  it("needs a type and rejects extra fields", () => {
+    const valid = { type: "pick", payload: { value: 1 } };
+    expect(gameActionSchema.safeParse(valid).success).toBe(true);
+    expect(gameActionSchema.safeParse({ payload: 1 }).success).toBe(false);
+    expect(gameActionSchema.safeParse({ ...valid, x: 1 }).success).toBe(false);
+  });
+});
+
+describe("roomReadySchema", () => {
+  it("needs a boolean", () => {
+    expect(roomReadySchema.safeParse({ ready: true }).success).toBe(true);
+    expect(roomReadySchema.safeParse({ ready: "yes" }).success).toBe(false);
+  });
 });
 
 describe("roomLeaveSchema", () => {

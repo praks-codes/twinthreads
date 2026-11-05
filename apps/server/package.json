@@ -15,6 +15,7 @@
   "dependencies": {
     "@fastify/cors": "^11.4.0",
     "@twinthreads/engine": "workspace:*",
+    "@twinthreads/test-game": "workspace:*",
     "fastify": "^5.12.8",
     "socket.io": "^4.8.4",
     "zod": "^4.6.7"

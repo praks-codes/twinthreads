@@ -7,6 +7,7 @@ import type {
 import Fastify from "fastify";
 import { Server } from "socket.io";
 import type { Config } from "./config.js";
+import type { GameRegistry } from "./games.js";
 import { attachRoomSockets } from "./sockets.js";
 
 const MAX_MESSAGE_BYTES = 16 * 1024;
@@ -17,6 +18,7 @@ const PING_TIMEOUT_MS = 5_000;
 
 export interface AppDependencies {
   store: RoomStore;
+  games: GameRegistry;
   countRooms: () => number;
   now: () => number;
 }
@@ -29,7 +31,7 @@ export function buildApp(
     | "ROOM_IDLE_MINUTES"
     | "RECONNECT_GRACE_SECONDS"
   >,
-  { store, countRooms, now }: AppDependencies,
+  { store, games, countRooms, now }: AppDependencies,
 ) {
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
 
@@ -54,6 +56,7 @@ export function buildApp(
   const shutdownRooms = attachRoomSockets({
     io,
     store,
+    games,
     idleMs: config.ROOM_IDLE_MINUTES * 60_000,
     graceMs: config.RECONNECT_GRACE_SECONDS * 1000,
     log: app.log,
