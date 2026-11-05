@@ -745,7 +745,7 @@ describe("what the AI is told", () => {
     ]);
   });
 
-  it("carries earlier cases, verdicts and the score into later cases", () => {
+  it("gives a new case its own history, plus the score", () => {
     let session = settle(toHearing());
     let now = 1;
     while (session.state.caseNumber === 1) {
@@ -762,11 +762,11 @@ describe("what the AI is told", () => {
     };
     expect(input.prosecutor).toBe("Player 2");
     expect(input.score).toMatch(/has 1/);
-    const text = input.history.join("\n");
-    expect(text).toContain("Stole the duvet.");
-    expect(text).toMatch(/Judge \((Guilty|Not guilty)\)/);
-    expect(text).toContain("Case 2: Player 2 accuses Player 1.");
-    expect(text).toContain("Player 2 (Accusation): Ate my toast.");
+    expect(input.history).toEqual([
+      "Case 2: Player 2 accuses Player 1.",
+      "Player 2 (Accusation): Ate my toast.",
+      "Player 1 (Defense): It was good toast.",
+    ]);
   });
 
   it("drops the oldest lines if a game is too long for the model", () => {

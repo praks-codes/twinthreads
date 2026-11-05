@@ -316,7 +316,7 @@ function addEffect(
 ): CourtState {
   const effectCounter = state.effectCounter + 1;
   const [a, b] = state.playerIds;
-  // Every request gets the whole game, so the judge never answers from one line.
+  // Every request gets the whole case, so the judge never answers from one line.
   const context = {
     prosecutor: playerLabel(state, prosecutorOf(state)),
     defendant: playerLabel(state, defendantOf(state)),
@@ -460,16 +460,17 @@ function playerLabel(state: CourtState, playerId: PlayerId): string {
   return playerId === state.playerIds[0] ? "Player 1" : "Player 2";
 }
 
-/** The game as readable lines. Private things, like lawyer ideas, are never here. */
+/**
+ * The current case as readable lines. Earlier cases stay out, so each case is judged
+ * on its own. Private things, like lawyer ideas, are never here.
+ */
 export function courtHistory(state: CourtState): string[] {
-  const lines: string[] = [];
-  let lastCase = 0;
+  const accuser = playerLabel(state, prosecutorOf(state));
+  const accused = playerLabel(state, defendantOf(state));
+  const lines = [`Case ${state.caseNumber}: ${accuser} accuses ${accused}.`];
   for (const entry of state.record) {
-    if (entry.caseNumber !== lastCase) {
-      lastCase = entry.caseNumber;
-      const accuser = entry.caseNumber % 2 === 1 ? "Player 1" : "Player 2";
-      const accused = entry.caseNumber % 2 === 1 ? "Player 2" : "Player 1";
-      lines.push(`Case ${entry.caseNumber}: ${accuser} accuses ${accused}.`);
+    if (entry.caseNumber !== state.caseNumber || entry.label === "Setup") {
+      continue;
     }
     const speaker =
       entry.speaker === "judge" ? "Judge" : playerLabel(state, entry.speaker);
@@ -477,7 +478,7 @@ export function courtHistory(state: CourtState): string[] {
     lines.push(`${speaker}${label}: ${entry.text}`);
   }
 
-  // Keeps the newest lines if a very long game wouldn't fit in a small model.
+  // Keeps the newest lines if a very long case wouldn't fit in a small model.
   let total = 0;
   let start = lines.length;
   while (
@@ -489,7 +490,7 @@ export function courtHistory(state: CourtState): string[] {
   }
   return start === 0
     ? lines
-    : ["(The start of the game was left out.)", ...lines.slice(start)];
+    : ["(The start of the case was left out.)", ...lines.slice(start)];
 }
 
 function neutralMoods(state: CourtState): Record<PlayerId, Mood> {

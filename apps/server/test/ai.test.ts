@@ -95,7 +95,7 @@ describe("buildCourtPrompt", () => {
     expect(prompt?.user).toContain("Your client is the accused");
   });
 
-  it("gives every kind of request the whole game so far", () => {
+  it("gives every kind of request the whole case so far", () => {
     const history = ["Case 1: Player 1 accuses Player 2.", "Judge: Old joke."];
     for (const kind of [
       "lawyer",
