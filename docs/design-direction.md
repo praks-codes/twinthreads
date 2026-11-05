@@ -23,7 +23,7 @@ Light-hearted, bubbly, funny and lovely. Not a simple question-and-answer game. 
 | Accusations       | Write your own, pick a ready-made card, or complete a fill-in-the-blank card                                             |
 | Defenses          | Write your own, pick an example, or ask an AI defense lawyer for suggestions based on the accusation                     |
 | Hearing           | Accusation and defense are shown in front of the judge to both players, even with cross-examination off                  |
-| Stage             | A courtroom scene stays on screen, with speech bubbles and signs for the crowd's reactions                               |
+| Stage             | A courtroom scene stays on screen, with speech bubbles and a gummy audience that reacts but never votes                  |
 | Case meter        | A live bar shows which player the judge is leaning towards                                                               |
 | Mode              | Partners swap prosecutor and defendant each case, and an AI judges. Players never judge                                  |
 | Judge             | Personality agreed by both partners at the start of the game                                                             |
@@ -40,7 +40,7 @@ Light-hearted, bubbly, funny and lovely. Not a simple question-and-answer game. 
 
 The owner likes this theme, and it needs to become more interesting and interactive. That work belongs to the polish at the end of the game (milestone 4).
 
-Tip the scales (evidence drawings, witnesses and bribes), the closing tapping battle and the gummy bear crowd were tried in testing, then removed because they added little.
+Tip the scales (evidence drawings, witnesses and bribes) and the closing tapping battle were tried in testing, then removed because they added little.
 
 Not chosen: The Daily Gavel, Sofa Court Live, The Stitched Court and Sticker Book. All remain in the mockups for reference.
 

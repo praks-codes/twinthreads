@@ -15,7 +15,7 @@ Setup (first case only), accusation, defense, hearing, objections with an argume
 ## Rules from the first test
 
 - **Judge and cross-examination:** both partners must agree before the game starts, and either changing their mind clears the other's approval. If time runs out on a disagreement, the Court picks one partner's choice and says so.
-- **Objections:** only the side that didn't just speak can object, so the prosecutor objects at the hearing and after cross-examination.
+- **Objections:** only the side that didn't just speak can object, so the prosecutor objects at the hearing and after cross-examination. After a ruling the game moves to the next step, so each statement can only be objected to once.
 - **Court record:** both players can always read everything said so far, across all cases. Lawyer suggestions stay private until used.
 - **Wax seal:** the verdict, score, moods and meter stay hidden until the seal breaks.
 
@@ -25,7 +25,7 @@ Setup (first case only), accusation, defense, hearing, objections with an argume
 
 - Players show neutral, happy, laughing, crying, annoyed, nervous, smug and in-love states, with a matching emoji. The AI picks them during the case.
 - Either player can send a floating emoji at any time.
-- Signs on the stage shout GASP!, BOOOHOOO!, AWWWW! or HAHAHA!, chosen by the AI.
+- The gummy audience behind the judge reacts, and shouts GASP!, BOOOHOOO!, AWWWW! or HAHAHA!, chosen by the AI. It never votes.
 
 ## How the judge talks
 
