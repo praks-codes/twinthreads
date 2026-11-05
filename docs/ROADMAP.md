@@ -19,7 +19,7 @@ The direction of TwinThreads: which games we build, in what order, and the miles
 | #   | Milestone                | Done when                                                                                                              | Status      |
 | --- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ----------- |
 | 0   | Repo and tooling         | Empty apps run locally and on a phone                                                                                  | Done        |
-| 1   | Hello Room               | Two phones share a room code, see each other live, survive a refresh                                                   | In progress |
+| 1   | Hello Room               | Two phones share a room code, see each other live, survive a refresh                                                   | Done        |
 | 2   | Phase engine             | A fake test game runs through every phase                                                                              | Not started |
 | 2a  | Design direction         | Mood, look and Court's screen-by-screen flow are agreed in a short design doc, with clickable mockups tried on a phone | Not started |
 | 3   | Court v0                 | A couple can play three rounds start to finish, ugly UI is fine                                                        | Not started |
@@ -27,7 +27,9 @@ The direction of TwinThreads: which games we build, in what order, and the miles
 | 5   | Public pages and hosting | Court live on a real domain, SEO pages indexed                                                                         | Not started |
 | 6   | Couple's Mystery         | Reuses the engine with minimal new platform code                                                                       | Not started |
 
-Milestone specs: [Hello Room](hello-room.md) (approved).
+Milestone specs: [Hello Room](hello-room.md) (done).
+
+Still open from milestone 1: test on an Android phone and across different networks, once hosted at milestone 5.
 
 ## Design plan
 

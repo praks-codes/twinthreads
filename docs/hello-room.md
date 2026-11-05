@@ -1,6 +1,6 @@
 # Milestone 1: Hello Room
 
-**Status:** approved, in progress.
+**Status:** done. Still open: testing on Android and across different networks, once hosted at milestone 5.
 
 ## Goal
 
@@ -38,7 +38,7 @@ Room logic stays in `apps/server` for this milestone, because it needs the clock
 
 ### Web (`apps/web`)
 
-- **`useRoom()` hook:** owns the socket, the stored token, reconnection and the latest `room:state`.
+- `useRoom()` **hook:** owns the socket, the stored token, reconnection and the latest `room:state`.
 - **Home screen:** display name, create, or join with a code.
 - **Room screen:** code, both players, connection status and Leave.
 - **Shared platform components:** `Button`, `TextField`, `RoomCode`, `PlayerList` and `ConnectionBanner`, placed as described in `ARCHITECTURE.md` section 7.1.
@@ -196,15 +196,15 @@ Automated: lint, typecheck, tests and build pass in CI.
 
 On two devices on the same Wi-Fi, first two phones, then a phone and a laptop:
 
-- [ ] Create a room on one phone and join from the other
-- [ ] Both names appear on both screens without a refresh
-- [ ] Refreshing either phone returns it to the same room
-- [ ] Locking a phone for a minute, then returning, reconnects it
-- [ ] The other phone shows "Partner reconnecting..." during a drop
-- [ ] Tapping Leave shows "Your partner left" on the other phone
-- [ ] The player who left can rejoin with the same code
-- [ ] A wrong code shows a clear error
-- [ ] A third device can't join a full room
+- [x] Create a room on one phone and join from the other
+- [x] Both names appear on both screens without a refresh
+- [x] Refreshing either phone returns it to the same room
+- [x] Locking a phone for a minute, then returning, reconnects it
+- [x] The other phone shows "Partner reconnecting..." during a drop
+- [x] Tapping Leave shows "Your partner left" on the other phone
+- [x] The player who left can rejoin with the same code
+- [x] A wrong code shows a clear error
+- [x] A third device can't join a full room
 
 To try two players on one computer, use a private window for the second one. Normal tabs share browser storage, so they count as the same player.
 
