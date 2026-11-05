@@ -1,26 +1,29 @@
-import { useEffect, useState } from "react";
-
-const healthUrl = import.meta.env.DEV
-  ? "/health"
-  : `${import.meta.env.VITE_SERVER_URL}/health`;
+import { HomeScreen } from "./room/HomeScreen.js";
+import { RoomScreen } from "./room/RoomScreen.js";
+import { useRoom } from "./room/useRoom.js";
 
 export function App() {
-  const [status, setStatus] = useState("checking...");
+  const room = useRoom();
 
-  useEffect(() => {
-    fetch(healthUrl)
-      .then((response) => {
-        if (!response.ok) throw new Error(String(response.status));
-        return response.json() as Promise<{ status: string; rooms: number }>;
-      })
-      .then((health) => setStatus(`${health.status} (${health.rooms} rooms)`))
-      .catch(() => setStatus("unreachable"));
-  }, []);
+  if (!room.session) {
+    return (
+      <HomeScreen
+        connected={room.connected}
+        notice={room.notice}
+        onCreate={room.createRoom}
+        onJoin={room.joinRoom}
+      />
+    );
+  }
 
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", padding: 16 }}>
-      <h1>TwinThreads</h1>
-      <p>Server status: {status}</p>
-    </main>
+    <RoomScreen
+      connected={room.connected}
+      notice={room.notice}
+      state={room.state}
+      code={room.session.code}
+      myPlayerId={room.session.playerId}
+      onLeave={room.leaveRoom}
+    />
   );
 }
