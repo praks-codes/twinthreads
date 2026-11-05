@@ -46,7 +46,8 @@ function ollamaProvider(baseUrl: string, model: string): AiProvider {
           stream: false,
           format: "json",
           keep_alive: "15m",
-          options: { temperature: 0.9, num_predict: maxTokens },
+          // Room for the whole game. A smaller window would silently cut off the start.
+          options: { temperature: 0.9, num_predict: maxTokens, num_ctx: 8192 },
           messages: [
             { role: "system", content: system },
             { role: "user", content: user },
