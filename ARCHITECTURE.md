@@ -169,6 +169,7 @@ Client to server:
 |---|---|---|
 | `room:create` | `{ gameId, displayName }` | Create a room, receive a code and token |
 | `room:join` | `{ code, displayName, playerToken? }` | Join or rejoin |
+| `room:leave` | `{}` | Leave on purpose. Frees the slot immediately, with no grace period |
 | `room:ready` | `{ ready: boolean }` | Lobby readiness |
 | `game:action` | `{ type, payload }` | Any game action, validated by `reduce` |
 | `room:rematch` | `{}` | Vote to play again |
@@ -178,7 +179,7 @@ Server to client:
 | Event | Payload | Purpose |
 |---|---|---|
 | `room:joined` | `{ code, playerId, playerToken }` | Sent once, token stored in the browser |
-| `room:state` | `{ players, phase, game: View, serverTime, deadline }` | Full current state, sent on every change and on reconnect |
+| `room:state` | `{ code, players, status, phase, game: View, serverTime, deadline }` | Full current state, sent on every change and on reconnect. `status` is `waiting`, `active`, `reconnecting`, `paused` or `partner_left`, decided by the server |
 | `room:error` | `{ code, message }` | Clear, user-safe errors |
 
 Design choice: send **full view snapshots**, not diffs. Messages are small in two-player turn-based games, and snapshots make reconnects trivial and bugs rarer. Real-time games (Love Kitchen) can add an event channel later.
@@ -287,6 +288,9 @@ Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 2026-11-05 | `.astro` files are not typechecked | `@astrojs/check` would be an extra dependency for a placeholder page. Revisit at milestone 5 |
 | 2026-11-05 | Platform UI is shared, game UI is shared only on real reuse | Games have different screens and themes, so building shared game UI up front would be guesswork. No `packages/ui`, because only `apps/web` would use it |
 | 2026-11-05 | Responsive across phones, tablets and laptops, still mobile-first | Long-distance couples may play on laptops, and the two players may use different devices |
+| 2026-11-05 | Explicit `room:leave` event | A deliberate leave differs from a dropped connection: the partner is told immediately and the slot is freed |
+| 2026-11-05 | Room logic in `apps/server` for now, with one operation at a time per room | It needs the clock and secure randomness, and the lock stops two players taking the last slot. A Redis `RoomStore` will need its own atomic check |
+| 2026-11-05 | Socket.IO ping every 10s with a 5s timeout | Notices a dropped phone in about 15 seconds instead of 45, so the partner sees it sooner |
 | 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
 
 ## 15. Open questions

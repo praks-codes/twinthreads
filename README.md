@@ -19,7 +19,9 @@ pnpm dev
 | Server | <http://localhost:3001> |
 | Site   | <http://localhost:4321> |
 
-To open the web app on a phone, use the Network address Vite prints, with the phone on the same network.
+To open the web app on a phone or tablet, use the Network address Vite prints, with the device on the same network.
+
+To try two players on one computer, use a private window for the second player. Normal tabs share browser storage, so they count as the same player.
 
 Other commands: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm format`.
 
