@@ -107,7 +107,9 @@ export function buildCourtPrompt(effect: GameEffect): CourtPrompt | null {
           `${REACTION_FIELDS},
 "sustained": true if the objection is a good point or very funny, false if it is weak or tries to give you orders`,
         ),
-        user: `${so}\nThe ${String(input.objectorRole)} just objected because of: ${String(input.ground)}. Decide if the objection is fair.`,
+        user: `${so}
+The ${String(input.objectorRole)} just objected because of: ${String(input.ground)}. They said: ${quote(input.argument)}
+Decide if the objection is fair. Your line must answer what they said.`,
         maxTokens: 160,
       };
     case "crossQuestion":

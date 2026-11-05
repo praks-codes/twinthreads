@@ -597,12 +597,9 @@ function advance(
     case "hearing":
       return afterHearing(state);
     case "ruling": {
-      const returnTo = state.objection?.returnTo ?? "hearing";
-      return toStage(
-        { ...state, objection: null },
-        returnTo,
-        now + timings.showMs,
-      );
+      // Straight to what comes next, so a statement can only be objected to once.
+      const stage = state.objection?.returnTo ?? "hearing";
+      return advance({ ...state, stage, objection: null }, now, timings);
     }
     case "crossReact":
       return startDeliberating(state);

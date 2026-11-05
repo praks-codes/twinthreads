@@ -289,7 +289,7 @@ describe("the AI lawyer", () => {
 });
 
 describe("objections", () => {
-  it("makes the objector argue, then returns to the case after a ruling", () => {
+  it("makes the objector argue, then moves on after a ruling", () => {
     let session = settle(toHearing());
     const before = session.state.meter;
     session = act(session, A, "object");
@@ -301,19 +301,39 @@ describe("objections", () => {
     expect(session.state.objection?.sustained).toBe(true);
     expect(session.state.meter).toBe(before + 6);
     session = bothContinue(session);
-    expect(session.state.stage).toBe("hearing");
+    expect(session.state.stage).toBe("crossExam");
     expect(session.state.objection).toBeNull();
   });
 
   it("limits a player to three objections", () => {
-    let session = settle(toHearing());
-    for (let used = 0; used < 3; used++) {
-      session = act(session, A, "object");
-      session = act(session, A, "argue", { ground: 0, argument: "No." });
-      session = bothContinue(settle(session));
-    }
+    const session = settle(toHearing());
+    const spent = {
+      ...session,
+      state: {
+        ...session.state,
+        objectionsLeft: { [A]: 0, [B]: 3 },
+      },
+    };
+    expect(viewFor(game, spent, A).canObject).toBe(false);
+    expect(applyAction(game, spent, A, { type: "object" }, 1).ok).toBe(false);
+  });
+
+  it("only allows one objection per statement", () => {
+    let session = act(settle(toHearing()), A, "object");
+    session = act(session, A, "argue", { ground: 0, argument: "No." });
+    session = bothContinue(settle(session));
+    expect(session.state.stage).not.toBe("hearing");
     expect(viewFor(game, session, A).canObject).toBe(false);
-    expect(applyAction(game, session, A, { type: "object" }, 1).ok).toBe(false);
+  });
+
+  it("goes to the verdict after objecting to a cross-examination answer", () => {
+    let session = bothContinue(settle(toHearing()));
+    session = settle(session, { question: "Why?" });
+    session = act(session, B, "answer", { text: "Because." });
+    session = act(settle(session), A, "object");
+    session = act(session, A, "argue", { ground: 0, argument: "No." });
+    session = bothContinue(settle(session));
+    expect(session.state.stage).toBe("deliberating");
   });
 
   it("only lets the side that didn't just speak object", () => {
