@@ -19,6 +19,15 @@
   padding: 0 14px;
 }
 
+.page[data-game="court"] .leave .button {
+  border: 3px solid #3d0d33;
+  border-radius: 24px;
+  background: #fff4f9;
+  color: #3d0d33;
+  font-family: "Baloo 2", system-ui, sans-serif;
+  font-weight: 800;
+}
+
 .court {
   --ink: #3d0d33;
   --butter: #ffe27a;
@@ -140,7 +149,7 @@
   display: flex;
   flex-direction: column;
   gap: 9px;
-  min-height: 300px;
+  min-height: 200px;
   padding: 10px 14px 12px;
 }
 
@@ -488,6 +497,93 @@
   font-family: Chango, sans-serif;
   font-size: 14px;
   font-weight: 400;
+}
+
+.court-card {
+  position: relative;
+}
+
+.court-badge {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.court-record {
+  display: grid;
+  gap: 6px;
+  margin: 0 14px 10px;
+  padding: 10px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+}
+
+.court-record h2 {
+  margin: 0;
+  font-family: Chango, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.court-record ol {
+  display: grid;
+  gap: 6px;
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.court-record__case {
+  margin: 4px 0;
+  font-family: Chango, sans-serif;
+  font-size: 13px;
+  text-align: center;
+}
+
+.court-record__entry {
+  display: grid;
+  gap: 1px;
+  padding: 5px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 15px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.court-record__entry--judge {
+  background: var(--butter);
+}
+
+.court-record__entry strong {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.court-record__entry svg {
+  width: 140px;
+  border: 2px dashed var(--ink);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.court-record__entry path {
+  fill: none;
+  stroke: var(--berry);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .court-field {
@@ -857,7 +953,25 @@
 
   .court__layout {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "stage panel"
+      "stage record";
+    grid-template-rows: auto 1fr;
     align-items: start;
+  }
+
+  .court-stage {
+    grid-area: stage;
+  }
+
+  .court__panel {
+    grid-area: panel;
+    min-height: 0;
+  }
+
+  .court-record {
+    grid-area: record;
+    margin: 0 20px 10px;
   }
 
   .court-stage {

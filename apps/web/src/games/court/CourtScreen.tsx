@@ -15,6 +15,7 @@ import {
   type JudgeId,
   type JudgeMood,
   type MoveKind,
+  type RecordEntry,
 } from "@twinthreads/court";
 import {
   useEffect,
@@ -94,7 +95,7 @@ function Cards({
   selected,
   onPick,
 }: {
-  items: { key: string; title?: string; text: string }[];
+  items: { key: string; title?: string; text: string; badge?: string }[];
   selected: string | null;
   onPick: (key: string) => void;
 }) {
@@ -108,6 +109,7 @@ function Cards({
           aria-pressed={selected === item.key}
           onClick={() => onPick(item.key)}
         >
+          {item.badge && <em className="court-badge">{item.badge}</em>}
           {item.title && <strong>{item.title}</strong>}
           <span>{item.text}</span>
         </button>
@@ -678,6 +680,63 @@ function CaseFilePanel({
   );
 }
 
+function CourtRecord({
+  record,
+  nameOf,
+}: {
+  record: RecordEntry[];
+  nameOf: (playerId: string) => string;
+}) {
+  const list = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    if (list.current) list.current.scrollTop = list.current.scrollHeight;
+  }, [record.length]);
+
+  if (record.length === 0) return null;
+  return (
+    <section className="court-record">
+      <h2>Court record</h2>
+      <ol ref={list} tabIndex={0} aria-label="Everything said in court so far">
+        {record.map((entry, index) => {
+          const judge = entry.speaker === "judge";
+          const newCase = record[index - 1]?.caseNumber !== entry.caseNumber;
+          return (
+            <li key={index}>
+              {newCase && (
+                <div className="court-record__case">
+                  Case {entry.caseNumber}
+                </div>
+              )}
+              <div
+                className={
+                  judge
+                    ? "court-record__entry court-record__entry--judge"
+                    : "court-record__entry"
+                }
+              >
+                <strong>
+                  {judge ? "Judge Cupid" : nameOf(entry.speaker)}
+                  {entry.label === "Judge" ? "" : `: ${entry.label}`}
+                </strong>
+                <span>{entry.text}</span>
+                {entry.strokes && (
+                  <svg
+                    viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
+                    role="img"
+                    aria-label="The drawing submitted as Exhibit A"
+                  >
+                    <path d={strokesToPath(entry.strokes)} />
+                  </svg>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
 function ContinueButton({
   game,
   label,
@@ -691,7 +750,7 @@ function ContinueButton({
     <button
       type="button"
       className="court-big"
-      disabled={game.haveContinued}
+      disabled={game.haveContinued || !game.canContinue}
       onClick={() => onAction("continue", {})}
     >
       {game.haveContinued ? "Waiting for your partner..." : label}
@@ -753,7 +812,10 @@ export default function CourtScreen({
 
   let judgeLine = reaction?.line ?? "";
   if (game.judgeThinking) judgeLine = thinkingLine;
-  else if (stage === "setup") judgeLine = "Choose your judge.";
+  else if (stage === "setup")
+    judgeLine = game.setupAgreed
+      ? "Agreed! Both of you tap to begin."
+      : "You must both agree on a judge. Good luck.";
   else if (stage === "accuse")
     judgeLine = iAmProsecutor
       ? `What did ${partner} do this time?`
@@ -762,7 +824,8 @@ export default function CourtScreen({
     judgeLine = iAmDefendant
       ? "Your defense? Choose your words poorly."
       : `${partner} is building a defense.`;
-  else if (stage === "moves") judgeLine = "Tip the scales. If you dare.";
+  else if (stage === "moves")
+    judgeLine = `Tip the scales, round ${game.moveRound} of ${game.moveRounds}. If you dare.`;
   else if (stage === "objection") judgeLine = "On what grounds?";
   else if (stage === "crossExam") judgeLine = game.crossQuestion ?? "";
   else if (stage === "closing") judgeLine = "Closing arguments. Plead for it!";
@@ -773,34 +836,53 @@ export default function CourtScreen({
 
   let panel: ReactNode = null;
   switch (stage) {
-    case "setup":
+    case "setup": {
+      const mine = game.setupChoices[myPlayerId];
+      const theirs = game.setupChoices[partnerId];
+      const badgeFor = (id: JudgeId) => {
+        const me = mine?.judge === id;
+        const them = theirs?.judge === id;
+        if (me && them) return "You both";
+        if (me) return "You";
+        return them ? partner : undefined;
+      };
       panel = (
         <>
           <Cards
-            items={(Object.keys(JUDGES) as JudgeId[]).map((id) => ({
-              key: id,
-              title: JUDGES[id].name,
-              text: JUDGES[id].tagline,
-            }))}
-            selected={game.judge}
+            items={(Object.keys(JUDGES) as JudgeId[]).map((id) => {
+              const badge = badgeFor(id);
+              return {
+                key: id,
+                title: JUDGES[id].name,
+                text: JUDGES[id].tagline,
+                ...(badge ? { badge } : {}),
+              };
+            })}
+            selected={mine?.judge ?? null}
             onPick={(judge) => onAction("setup", { judge })}
           />
           <button
             type="button"
             className="court-plain"
-            aria-pressed={game.crossExamOn}
-            onClick={() => onAction("setup", { crossExam: !game.crossExamOn })}
+            aria-pressed={mine?.crossExam ?? true}
+            onClick={() =>
+              onAction("setup", { crossExam: !(mine?.crossExam ?? true) })
+            }
           >
-            Cross-examination: {game.crossExamOn ? "on" : "off"}
+            Cross-examination: you {mine?.crossExam ? "on" : "off"}, {partner}{" "}
+            {theirs?.crossExam ? "on" : "off"}
           </button>
           <ContinueButton
             game={game}
-            label="Court is in session"
+            label={
+              game.setupAgreed ? "Court is in session" : "Agree on both first"
+            }
             onAction={onAction}
           />
         </>
       );
       break;
+    }
     case "accuse":
       panel = iAmProsecutor ? (
         <AccusePanel
@@ -824,11 +906,7 @@ export default function CourtScreen({
       panel = !game.judgeThinking && (
         <>
           <ObjectButton game={game} onAction={onAction} />
-          <ContinueButton
-            game={game}
-            label={stage === "crossReact" ? "Closing arguments" : "Carry on"}
-            onAction={onAction}
-          />
+          <ContinueButton game={game} label="Carry on" onAction={onAction} />
         </>
       );
       break;
@@ -1083,6 +1161,7 @@ export default function CourtScreen({
           )}
           {panel}
         </div>
+        <CourtRecord record={game.record} nameOf={nameOf} />
       </div>
       {stage === "aftermath" && game.ending === "pardoned" && (
         <div className="court-hearts" aria-hidden="true">
