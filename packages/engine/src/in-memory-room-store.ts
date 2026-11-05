@@ -1,5 +1,12 @@
 import type { RoomRecord, RoomStore } from "./types.js";
 
+export class RoomExistsError extends Error {
+  constructor(code: string) {
+    super(`Room already exists: ${code}`);
+    this.name = "RoomExistsError";
+  }
+}
+
 export class InMemoryRoomStore implements RoomStore {
   readonly #rooms = new Map<string, RoomRecord>();
   readonly #now: () => number;
@@ -16,7 +23,7 @@ export class InMemoryRoomStore implements RoomStore {
 
   async create(room: RoomRecord): Promise<void> {
     if (this.#rooms.has(room.code)) {
-      throw new Error(`Room already exists: ${room.code}`);
+      throw new RoomExistsError(room.code);
     }
     this.#rooms.set(room.code, { ...room });
   }
