@@ -12,6 +12,14 @@ This came from the [design direction](design-direction.md), which holds the full
 
 Setup (first case only), accusation, defense, hearing, objections with an argument and a ruling, tip the scales, cross-examination, closing tapping battle, the judge deciding, wax seal, verdict, punishment, pardon or no mercy, and a shareable case card. Roles swap each case.
 
+## Rules from the first test
+
+- **Judge and cross-examination:** both partners must agree before the game starts, and either changing their mind clears the other's approval. If time runs out on a disagreement, the Court picks one partner's choice and says so.
+- **Objections:** only the side that didn't just speak can object. The prosecutor can object at the hearing and after cross-examination, and either player can object to the other's move.
+- **Tip the scales:** each player gets one turn per round. There are two rounds with cross-examination on, one after the hearing and one after cross-examination, and one round with it off. A move used in the first round can't be used again in that case.
+- **Court record:** both players can always read everything said so far, including drawings, across all cases. Lawyer suggestions stay private until used.
+- **Wax seal:** the verdict, score, moods and meter stay hidden until the seal breaks.
+
 ## Characters and reactions
 
 - Players show neutral, happy, laughing, crying, annoyed, nervous, smug and in-love states, with a matching emoji. The AI picks them during the case.

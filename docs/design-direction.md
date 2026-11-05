@@ -18,22 +18,23 @@ Light-hearted, bubbly, funny and lovely. Not a simple question-and-answer game. 
 
 ## Chosen features
 
-| Feature           | Decision                                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------------------- |
-| Accusations       | Write your own, pick a ready-made card, or complete a fill-in-the-blank card                            |
-| Defenses          | Write your own, pick an example, or ask an AI defense lawyer for suggestions based on the accusation    |
-| Hearing           | Accusation and defense are shown in front of the judge to both players, even with cross-examination off |
-| Stage             | A courtroom scene stays on screen, with speech bubbles and a gummy crowd that reacts but never votes    |
-| Case meter        | A live bar shows which player the judge is leaning towards                                              |
-| Mode              | Partners swap prosecutor and defendant each case, and an AI judges. Players never judge                 |
-| Judge             | Personality chosen at the start of the game                                                             |
-| Cross-examination | The AI judge questions the defendant, if turned on at the start of the game                             |
-| Punishment        | The judge gives a punishment, and the winner can choose Pardon with a Kiss instead of letting it stand  |
-| Objection         | Limited uses. The objector picks grounds and argues them, then the judge sustains or overrules          |
-| Tip the scales    | Limited moves each case: draw evidence, call a gummy witness or bribe the judge. Moves can backfire     |
-| Closing           | A timed tapping battle between the partners, which pushes the case meter                                |
-| Crowd             | Boos and awws respond to what's said, the verdict and the punishment choice                             |
-| Case file         | A recap of each case when it closes                                                                     |
+| Feature           | Decision                                                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Accusations       | Write your own, pick a ready-made card, or complete a fill-in-the-blank card                                                |
+| Defenses          | Write your own, pick an example, or ask an AI defense lawyer for suggestions based on the accusation                        |
+| Hearing           | Accusation and defense are shown in front of the judge to both players, even with cross-examination off                     |
+| Stage             | A courtroom scene stays on screen, with speech bubbles and a gummy crowd that reacts but never votes                        |
+| Case meter        | A live bar shows which player the judge is leaning towards                                                                  |
+| Mode              | Partners swap prosecutor and defendant each case, and an AI judges. Players never judge                                     |
+| Judge             | Personality agreed by both partners at the start of the game                                                                |
+| Cross-examination | The AI judge questions the defendant, if turned on at the start of the game                                                 |
+| Punishment        | The judge gives a punishment, and the winner can choose Pardon with a Kiss instead of letting it stand                      |
+| Objection         | Limited uses, only for the side that didn't just speak. The objector picks grounds and argues them, then the judge rules    |
+| Tip the scales    | Once or twice per case, one turn each per round: draw evidence, call a gummy witness or bribe the judge. Moves can backfire |
+| Closing           | A timed tapping battle between the partners, which pushes the case meter                                                    |
+| Crowd             | Boos and awws respond to what's said, the verdict and the punishment choice                                                 |
+| Case file         | A recap of each case when it closes                                                                                         |
+| Court record      | Everything said so far stays on screen for both players                                                                     |
 
 ## Theme
 
