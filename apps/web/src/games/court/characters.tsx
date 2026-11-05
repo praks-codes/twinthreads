@@ -1,4 +1,4 @@
-import type { JudgeMood, Mood } from "@twinthreads/court";
+import type { Crowd, JudgeMood, Mood } from "@twinthreads/court";
 
 const INK = "#3D0D33";
 const line = { fill: "none", stroke: INK, strokeLinecap: "round" } as const;
@@ -211,6 +211,31 @@ export function Blob({
           <circle cx="30" cy="72" r="7" fill="#FF8FB8" />
           <circle cx="90" cy="72" r="7" fill="#FF8FB8" />
         </g>
+      )}
+    </svg>
+  );
+}
+
+export function Gummy({ color, crowd }: { color: string; crowd: Crowd }) {
+  return (
+    <svg viewBox="0 0 40 52" aria-hidden="true">
+      <g fill={color} stroke={INK} strokeWidth="2">
+        <circle cx="10" cy="7" r="5" />
+        <circle cx="30" cy="7" r="5" />
+        <ellipse cx="20" cy="39" rx="14" ry="12" />
+        <circle cx="20" cy="17" r="14" />
+      </g>
+      <circle cx="15" cy="16" r="2" fill={INK} />
+      <circle cx="25" cy="16" r="2" fill={INK} />
+      {crowd === "calm" && (
+        <path d="M16 23 Q20 26 24 23" {...line} strokeWidth="2" />
+      )}
+      {crowd === "gasp" && <ellipse cx="20" cy="24" rx="3" ry="4" fill={INK} />}
+      {crowd === "boo" && (
+        <path d="M15 26 Q20 21 25 26" {...line} strokeWidth="2" />
+      )}
+      {(crowd === "aww" || crowd === "laugh") && (
+        <path d="M15 22 Q20 29 25 22 Z" fill="#FF3B6B" stroke={INK} />
       )}
     </svg>
   );

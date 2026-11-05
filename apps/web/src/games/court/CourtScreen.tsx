@@ -452,6 +452,14 @@ function CaseFilePanel({
   );
 }
 
+/** Names the next step, so players always know what the button will do. */
+function nextStep(game: CourtView): string {
+  const from = game.stage === "ruling" ? game.objection?.returnTo : game.stage;
+  return from === "hearing" && game.crossExamOn
+    ? "Next: cross-examination"
+    : "Next: the verdict";
+}
+
 function CourtRecord({
   record,
   nameOf,
@@ -676,7 +684,7 @@ export default function CourtScreen({
           <ObjectButton game={game} onAction={onAction} />
           <ContinueButton
             game={game}
-            label={stage === "crossReact" ? "Send it to the judge" : "Carry on"}
+            label={nextStep(game)}
             onAction={onAction}
           />
         </>
@@ -702,7 +710,7 @@ export default function CourtScreen({
           </div>
           <ContinueButton
             game={game}
-            label="Back to the case"
+            label={nextStep(game)}
             onAction={onAction}
           />
         </>
@@ -865,6 +873,10 @@ export default function CourtScreen({
           role="img"
           aria-label={`Case meter, you against ${partner}: ${Math.round(myMeter)} out of 100`}
         >
+          <span className="court-meter__name court-meter__name--left">You</span>
+          <span className="court-meter__name court-meter__name--right">
+            {partner}
+          </span>
           <div className="court-meter__fill" style={{ width: `${myMeter}%` }} />
           <div className="court-meter__spark" style={{ left: `${myMeter}%` }}>
             <svg viewBox="0 0 36 36" aria-hidden="true">

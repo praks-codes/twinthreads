@@ -5,9 +5,10 @@ import {
   type JudgeMood,
 } from "@twinthreads/court";
 import { useEffect, useRef, useState } from "react";
-import { Blob, Cupid, HEART_PATH, KISS_PATH } from "./characters.js";
+import { Blob, Cupid, Gummy, HEART_PATH, KISS_PATH } from "./characters.js";
 
 export const SEAT_COLORS = ["#FFE27A", "#8FD9FF"] as const;
+const GUMMY_COLORS = ["#8FD9FF", "#FFE27A", "#B9F2C8", "#FFB070", "#D7B8FF"];
 const CROWD_WORD: Record<Crowd, string> = {
   calm: "",
   gasp: "GASP!",
@@ -109,6 +110,25 @@ function EmoteFloat({ count, emoji }: { count: number; emoji: string }) {
   );
 }
 
+function CrowdGroup({ crowd, start }: { crowd: Crowd; start: number }) {
+  return (
+    <>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span
+          key={i}
+          className={crowd === "calm" ? "court-gummy" : "court-gummy court-hop"}
+          style={{ animationDelay: `${-0.13 * i - start * 0.2}s` }}
+        >
+          <Gummy
+            crowd={crowd}
+            color={GUMMY_COLORS[(i + start) % 5] ?? "#8FD9FF"}
+          />
+        </span>
+      ))}
+    </>
+  );
+}
+
 export function Stage({
   game,
   myPlayerId,
@@ -122,7 +142,7 @@ export function Stage({
   nameOf: (playerId: string) => string;
   judgeMood: JudgeMood;
 }) {
-  const { word } = stageCrowd(game);
+  const { crowd, word } = stageCrowd(game);
   const pardoned = game.stage === "aftermath" && game.ending === "pardoned";
 
   const seat = (playerId: string, side: "left" | "right", color: string) => {
@@ -158,6 +178,14 @@ export function Stage({
           <path d={HEART_PATH} />
         </svg>
         <div className="court-floor" />
+        <div className="court-crowd court-crowd--left">
+          <CrowdGroup crowd={crowd} start={0} />
+        </div>
+        <div className="court-crowd court-crowd--right">
+          <CrowdGroup crowd={crowd} start={2} />
+        </div>
+        <div className="court-rail court-rail--left" />
+        <div className="court-rail court-rail--right" />
         <div className="court-judge court-wobble">
           <Cupid mood={judgeMood} />
         </div>
