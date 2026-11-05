@@ -115,7 +115,7 @@ export const FALLBACK = {
   reply: ["OK. I heard that.", "Hmm. Go on.", "That is a good one. I think."],
   lawyer: [
     { style: "Sincere", text: "I'm sorry. Can I make it up to you?" },
-    { style: "Unhinged", text: "The fridge told me to do it." },
+    { style: "Unhinged", text: "I was sleepwalking. It was not me." },
     { style: "Blame the pet", text: "It was the dog. We don't have a dog." },
   ],
   sustained: "Good point. I agree.",

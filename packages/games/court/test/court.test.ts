@@ -680,6 +680,54 @@ describe("the court record", () => {
   });
 });
 
+describe("the case card", () => {
+  it("includes the whole conversation of that case only", () => {
+    let session = bothContinue(settle(toHearing(), { line: "Well now." }));
+    session = act(session, A, "reply", { text: "You did so." });
+    session = bothContinue(settle(session, { line: "Oh?" }));
+    session = act(session, B, "reply", { text: "I did not." });
+    session = bothContinue(settle(session, { line: "Hmm." }));
+    session = settle(session, { question: "Why?" });
+    session = act(session, B, "answer", { text: "Because." });
+    session = bothContinue(settle(session, { line: "I see." }));
+    session = settle(session, { line: "Guilty!", winner: "prosecutor" });
+    session = act(session, A, "breakSeal");
+    session = bothContinue(session);
+    session = bothContinue(act(session, A, "mercy", { pardon: true }));
+
+    const texts = session.state.cases[0]?.conversation.map((e) => e.text);
+    expect(texts).toEqual([
+      "Stole the duvet.",
+      "I did it for us.",
+      "Well now.",
+      "You did so.",
+      "Oh?",
+      "I did not.",
+      "Hmm.",
+      "Why?",
+      "Because.",
+      "I see.",
+    ]);
+
+    let now = 1;
+    while (session.state.caseNumber === 1) {
+      now = session.state.deadline ?? now;
+      session = applyTimeout(game, session, now);
+    }
+    session = act(session, B, "accuse", { text: "Ate my toast." }, now);
+    session = act(session, A, "defend", { text: "Yes." }, now);
+    session = settle(session, null, now);
+    while (session.state.cases.length < 2) {
+      session = settle(session, null, now);
+      now = session.state.deadline ?? now;
+      session = applyTimeout(game, session, now);
+    }
+    const second = JSON.stringify(session.state.cases[1]?.conversation);
+    expect(second).toContain("Ate my toast.");
+    expect(second).not.toContain("Stole the duvet.");
+  });
+});
+
 describe("what the AI is told", () => {
   it("includes everything said so far with every request", () => {
     let session = settle(toHearing(), { line: "A funny line." });

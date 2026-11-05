@@ -41,6 +41,13 @@ const MAX_METER_STEP = 12;
 const OBJECTION_STEP = 6;
 const CLOSE_CASE_MARGIN = 15;
 const VERDICT_METER = 42;
+const NOT_CONVERSATION = [
+  "Setup",
+  "Guilty",
+  "Not guilty",
+  "Punishment",
+  "Mercy",
+];
 const MAX_HISTORY_CHARS = 8000;
 
 export interface CourtTimings {
@@ -140,6 +147,8 @@ export interface CaseRecord {
   punishment: string | null;
   ending: "pardoned" | "punished" | "dismissed";
   meterForPlayerOne: number;
+  /** Everything said in this case. The verdict and punishment are kept apart. */
+  conversation: RecordEntry[];
 }
 
 /** One line of the court record, which both players can always read back. */
@@ -507,6 +516,11 @@ function closeCase(
     punishment: state.verdict?.punishment ?? null,
     ending,
     meterForPlayerOne: meter,
+    conversation: state.record.filter(
+      (entry) =>
+        entry.caseNumber === state.caseNumber &&
+        !NOT_CONVERSATION.includes(entry.label),
+    ),
   };
   return toStage(
     { ...state, ending, cases: [...state.cases, record] },
