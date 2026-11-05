@@ -197,6 +197,9 @@ importers:
       '@fastify/cors':
         specifier: ^11.4.0
         version: 11.4.0
+      '@twinthreads/court':
+        specifier: workspace:*
+        version: link:../../packages/games/court
       '@twinthreads/engine':
         specifier: workspace:*
         version: link:../../packages/engine
@@ -244,6 +247,9 @@ importers:
         specifier: ^4.8.4
         version: 4.8.4
     devDependencies:
+      '@twinthreads/court':
+        specifier: workspace:*
+        version: link:../../packages/games/court
       '@twinthreads/test-game':
         specifier: workspace:*
         version: link:../../packages/games/test-game

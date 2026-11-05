@@ -15,6 +15,7 @@
     "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
+    "@twinthreads/court": "workspace:*",
     "@twinthreads/test-game": "workspace:*",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
