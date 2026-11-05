@@ -304,8 +304,9 @@ Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
 | 2026-11-05 | Games request outside work through `pendingEffects` and `applyEffect` | The server runs an AI request outside the room lock, then passes the result in as data. Game logic stays pure, a late result is ignored, and a failed one becomes null, which every game must handle |
 | 2026-11-05 | AI providers sit behind one small interface, chosen by environment variable | Ollama for local testing, and any OpenAI-compatible service, with no new dependency. Another provider needs one function |
-| 2026-11-05 | Court runs as stages inside the existing phases | Hearing, moves and objections all sit in `PRIVATE_INPUT`, so the phase rules didn't change. The view controls what each player sees |
-| 2026-11-05 | The case meter decides clear cases, and the AI decides close ones | Small models are unreliable, so players' scoring and taps can't be overturned by one odd reply |
+| 2026-11-05 | Court runs as stages inside the existing phases | Hearing, objections and cross-examination all sit in `PRIVATE_INPUT`, so the phase rules didn't change. The view controls what each player sees |
+| 2026-11-05 | Every AI request includes the whole game so far, up to 8,000 characters | The judge must answer from everything that happened, including earlier cases. The oldest lines go first if a game is too long, and Ollama's context window is raised so nothing is cut off silently |
+| 2026-11-05 | The case meter decides clear cases, and the AI decides close ones | Small models are unreliable, so one odd reply can't overturn a case that's already clear |
 | 2026-11-05 | Court checks for serious topics itself as well as asking the AI | Real harm must never be ruled on as a joke, even when the AI is down |
 | 2026-11-05 | An AI judges Court, and players never judge | Players write their own accusations and defenses, so a fixed scoring rule can't rate them, and two partners can't fairly judge their own case |
 

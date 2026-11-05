@@ -10,21 +10,28 @@ This came from the [design direction](design-direction.md), which holds the full
 
 ## What each case includes
 
-Setup (first case only), accusation, defense, hearing, objections with an argument and a ruling, tip the scales, cross-examination, closing tapping battle, the judge deciding, wax seal, verdict, punishment, pardon or no mercy, and a shareable case card. Roles swap each case.
+Setup (first case only), accusation, defense, hearing, objections with an argument and a ruling, cross-examination, the judge deciding, wax seal, verdict, punishment, pardon or no mercy, and a shareable case card. Roles swap each case.
 
 ## Rules from the first test
 
 - **Judge and cross-examination:** both partners must agree before the game starts, and either changing their mind clears the other's approval. If time runs out on a disagreement, the Court picks one partner's choice and says so.
-- **Objections:** only the side that didn't just speak can object. The prosecutor can object at the hearing and after cross-examination, and either player can object to the other's move.
-- **Tip the scales:** each player gets one turn per round. There are two rounds with cross-examination on, one after the hearing and one after cross-examination, and one round with it off. A move used in the first round can't be used again in that case.
-- **Court record:** both players can always read everything said so far, including drawings, across all cases. Lawyer suggestions stay private until used.
+- **Objections:** only the side that didn't just speak can object, so the prosecutor objects at the hearing and after cross-examination.
+- **Court record:** both players can always read everything said so far, across all cases. Lawyer suggestions stay private until used.
 - **Wax seal:** the verdict, score, moods and meter stay hidden until the seal breaks.
+
+- **Your side:** your own avatar and your side of the meter are always on the left, on either device.
 
 ## Characters and reactions
 
 - Players show neutral, happy, laughing, crying, annoyed, nervous, smug and in-love states, with a matching emoji. The AI picks them during the case.
 - Either player can send a floating emoji at any time.
-- The gummy crowd shouts GASP!, BOOOHOOO!, AWWWW! or HAHAHA!, chosen by the AI.
+- Signs on the stage shout GASP!, BOOOHOOO!, AWWWW! or HAHAHA!, chosen by the AI.
+
+## How the judge talks
+
+- Very simple, everyday words, short lines, and always kind, whichever personality is chosen.
+- Every request includes the whole game so far, including earlier cases and the score, so replies can't depend on just the last thing said.
+- The tone lives in `apps/server/src/ai/court-prompts.ts`, and each personality in `packages/games/court/src/content.ts`.
 
 ## While the AI works
 
@@ -53,7 +60,6 @@ To add a provider with a different API, add one function in `apps/server/src/ai/
 ## Known limits
 
 - Fonts load from Google Fonts, and need to be self-hosted before going public.
-- The judge can't see drawings, only their captions.
 - The serious-topic word check is basic, and small models may miss cases too.
 - A small model may be fooled by "ignore your instructions" text. Its effect is limited, because one ruling can only move the meter a little.
 - Timers keep running during a reconnect, which is still an open decision.
@@ -67,7 +73,8 @@ Same Wi-Fi, with Ollama running:
 - [ ] The judge's replies respond to what was actually written
 - [ ] Waiting for the AI feels acceptable on your hardware
 - [ ] Every judge personality sounds different
-- [ ] Objections, moves and cross-examination all work on both phones
-- [ ] The tapping battle feels live on both phones
+- [ ] Objections and cross-examination work on both phones
+- [ ] The judge uses simple words and is never mean
+- [ ] Later replies refer to what happened earlier
 - [ ] The case card saves or shares from a phone
 - [ ] Refreshing mid-case returns to the right place
