@@ -9,6 +9,7 @@ const room: RoomRecord = {
   phase: "LOBBY",
   gameState: null,
   lastActiveAt: 0,
+  partnerLeft: false,
 };
 
 describe("InMemoryRoomStore", () => {

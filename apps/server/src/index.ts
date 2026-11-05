@@ -15,8 +15,13 @@ function readConfig(): Config {
 }
 
 const config = readConfig();
-const rooms = new InMemoryRoomStore(() => Date.now());
-const { app } = buildApp(config, () => rooms.size);
+const now = () => Date.now();
+const store = new InMemoryRoomStore(now);
+const { app } = buildApp(config, {
+  store,
+  countRooms: () => store.size,
+  now,
+});
 
 let shuttingDown = false;
 const shutdown = async (signal: NodeJS.Signals) => {

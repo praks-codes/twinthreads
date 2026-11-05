@@ -59,6 +59,8 @@ export interface RoomPlayer {
   displayName: string;
   ready: boolean;
   connected: boolean;
+  /** True once a disconnected player's reconnect grace period has run out. */
+  graceExpired: boolean;
 }
 
 export interface RoomRecord {
@@ -68,6 +70,8 @@ export interface RoomRecord {
   phase: Phase;
   gameState: unknown;
   lastActiveAt: number;
+  /** True after a player left on purpose, until someone takes the free slot. */
+  partnerLeft: boolean;
 }
 
 export interface RoomStore {
@@ -96,6 +100,7 @@ export interface GameActionPayload {
   payload: unknown;
 }
 export type RoomRematchPayload = Record<string, never>;
+export type RoomLeavePayload = Record<string, never>;
 
 // Server to client payloads
 export interface RoomJoinedPayload {
@@ -103,22 +108,40 @@ export interface RoomJoinedPayload {
   playerId: PlayerId;
   playerToken: string;
 }
+export type RoomStatus =
+  "waiting" | "active" | "reconnecting" | "paused" | "partner_left";
+
 /** `players` deliberately omits playerToken: tokens never go to the other player. */
 export interface RoomStatePayload<View = unknown> {
-  players: Omit<RoomPlayer, "playerToken">[];
+  code: string;
+  players: Omit<RoomPlayer, "playerToken" | "graceExpired">[];
+  status: RoomStatus;
   phase: Phase;
   game: View;
   serverTime: number;
   deadline: number | null;
 }
+export type RoomErrorCode =
+  | "INVALID"
+  | "NOT_FOUND"
+  | "ROOM_FULL"
+  | "BAD_TOKEN"
+  | "ALREADY_IN_ROOM"
+  | "RATE_LIMITED"
+  | "ROOM_EXPIRED"
+  | "REPLACED"
+  | "SHUTTING_DOWN"
+  | "INTERNAL";
+
 export interface RoomErrorPayload {
-  code: string;
+  code: RoomErrorCode;
   message: string;
 }
 
 export interface ClientToServerEvents {
   "room:create": (payload: RoomCreatePayload) => void;
   "room:join": (payload: RoomJoinPayload) => void;
+  "room:leave": (payload: RoomLeavePayload) => void;
   "room:ready": (payload: RoomReadyPayload) => void;
   "game:action": (payload: GameActionPayload) => void;
   "room:rematch": (payload: RoomRematchPayload) => void;

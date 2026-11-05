@@ -109,14 +109,20 @@ During local development every phone connects through the Vite proxy, so all of 
 
 `room:error` sends a code and a user-safe message:
 
-| Code            | Shown when                                    |
-| --------------- | --------------------------------------------- |
-| `INVALID`       | The message failed validation                 |
-| `NOT_FOUND`     | The code is wrong or the room has expired     |
-| `ROOM_FULL`     | Two players are already in the room           |
-| `BAD_TOKEN`     | The token doesn't match a player in this room |
-| `RATE_LIMITED`  | Too many attempts                             |
-| `SHUTTING_DOWN` | The server is restarting                      |
+| Code              | Shown when                                               |
+| ----------------- | -------------------------------------------------------- |
+| `INVALID`         | The message failed validation                            |
+| `NOT_FOUND`       | The code is wrong or the room has expired                |
+| `ROOM_FULL`       | Two players are already in the room                      |
+| `BAD_TOKEN`       | The token doesn't match a player in this room            |
+| `RATE_LIMITED`    | Too many attempts                                        |
+| `SHUTTING_DOWN`   | The server is restarting                                 |
+| `ALREADY_IN_ROOM` | This connection is already in a room                     |
+| `ROOM_EXPIRED`    | The room expired while the player was in it              |
+| `REPLACED`        | The same player opened the room in another tab or window |
+| `INTERNAL`        | Something unexpected failed                              |
+
+The server also accepts only one operation at a time per room, so two people can't both take the last slot.
 
 ## Design foundations
 
@@ -199,5 +205,7 @@ On two devices on the same Wi-Fi, first two phones, then a phone and a laptop:
 - [ ] The player who left can rejoin with the same code
 - [ ] A wrong code shows a clear error
 - [ ] A third device can't join a full room
+
+To try two players on one computer, use a private window for the second one. Normal tabs share browser storage, so they count as the same player.
 
 iOS and Android treat background tabs differently, so this checklist may turn up reconnect bugs that need another round of fixes.
