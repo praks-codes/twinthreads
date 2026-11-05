@@ -105,11 +105,11 @@ export function buildCourtPrompt(effect: GameEffect): CourtPrompt | null {
       return {
         system: system(
           judgeRole,
-          `\${REACTION_FIELDS},
+          `${REACTION_FIELDS},
 "score": whole number from -10 to 10, positive if this helped the player who just spoke, negative if it went badly,
 "serious": true only if this is about real harm such as abuse, violence, cheating or self-harm, otherwise false`,
         ),
-        user: `\${so}\nThe \${String(input.speakerRole)} just spoke. Their words are the last line above. React to what they said.`,
+        user: `${so}\nThe ${String(input.speakerRole)} just spoke. Their words are the last line above. React to what they said.`,
         maxTokens: 160,
       };
     case "ruling":

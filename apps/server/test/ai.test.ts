@@ -58,11 +58,40 @@ describe("buildCourtPrompt", () => {
     expect(system).not.toMatch(/biscuit|milk|tea\b/i);
   });
 
+  it("fills in every part of every prompt", () => {
+    for (const kind of [
+      "lawyer",
+      "hearing",
+      "reply",
+      "ruling",
+      "crossQuestion",
+      "crossReact",
+      "verdict",
+    ]) {
+      const prompt = buildCourtPrompt({ id: "x", kind, input: {} });
+      expect(`${prompt?.system} ${prompt?.user}`).not.toContain("${");
+    }
+  });
+
+  it("asks for a spoken line on every reaction", () => {
+    for (const kind of [
+      "hearing",
+      "reply",
+      "ruling",
+      "crossReact",
+      "verdict",
+    ]) {
+      const prompt = buildCourtPrompt({ id: "x", kind, input: {} });
+      expect(prompt?.system).toContain('"line":');
+    }
+  });
+
   it("gives every kind of request the whole game so far", () => {
     const history = ["Case 1: Player 1 accuses Player 2.", "Judge: Old joke."];
     for (const kind of [
       "lawyer",
       "hearing",
+      "reply",
       "ruling",
       "crossQuestion",
       "crossReact",
@@ -82,6 +111,7 @@ describe("buildCourtPrompt", () => {
     for (const kind of [
       "lawyer",
       "hearing",
+      "reply",
       "ruling",
       "crossQuestion",
       "crossReact",
