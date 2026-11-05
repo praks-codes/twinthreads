@@ -773,12 +773,16 @@
   stroke-width: 1.5;
 }
 
-.court-card-preview {
-  display: block;
-  width: min(100%, 320px);
-  margin: 0 auto;
+.court-card-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
   border: 3px solid var(--ink);
   border-radius: 14px;
+}
+
+.court-card-preview {
+  display: block;
+  width: 100%;
 }
 
 .court-hearts {

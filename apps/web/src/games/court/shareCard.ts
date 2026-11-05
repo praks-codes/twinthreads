@@ -2,8 +2,13 @@ import type { CaseRecord } from "@twinthreads/court";
 import { HEART_PATH, KISS_PATH } from "./characters.js";
 
 const WIDTH = 1080;
-const HEIGHT = 1350;
 const INK = "#3D0D33";
+const BODY_FONT = "700 34px 'Baloo 2', sans-serif";
+const CONVERSATION_TOP = 395;
+const BUBBLE_WIDTH = 860;
+const BUBBLE_TEXT_WIDTH = 800;
+const BUBBLE_LINE = 42;
+const BUBBLE_GAP = 22;
 
 function wrap(
   ctx: CanvasRenderingContext2D,
@@ -89,19 +94,47 @@ export async function drawCaseCard(
     document.fonts.load("800 34px 'Baloo 2'"),
   ]).catch(() => undefined);
 
+  // The card is as tall as the case, so nothing that was said gets cut off.
+  const measure = document.createElement("canvas").getContext("2d");
+  if (!measure) throw new Error("Canvas isn't available");
+  measure.font = BODY_FONT;
+  const bubbles = record.conversation.map((entry) => {
+    const lines = wrap(measure, entry.text, BUBBLE_TEXT_WIDTH);
+    return { entry, lines, height: 82 + lines.length * BUBBLE_LINE };
+  });
+  const conversationHeight = bubbles.reduce(
+    (sum, bubble) => sum + bubble.height + BUBBLE_GAP,
+    0,
+  );
+  const quoteLines = wrap(measure, `"${record.quote}"`, 900);
+  const punishmentLines = wrap(measure, record.punishment ?? "", 840);
+  const endingHeight =
+    record.ending === "pardoned"
+      ? 240
+      : record.punishment
+        ? 70 + punishmentLines.length * BUBBLE_LINE
+        : 0;
+  const height =
+    CONVERSATION_TOP +
+    conversationHeight +
+    130 +
+    quoteLines.length * BUBBLE_LINE +
+    endingHeight +
+    110;
+
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
-  canvas.height = HEIGHT;
+  canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas isn't available");
 
   ctx.fillStyle = "#FF8FB8";
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, WIDTH, height);
   [
-    [80, 150, 3],
-    [930, 90, 4],
-    [950, 1130, 3],
-    [50, 1190, 4],
+    [20, 150, 3],
+    [960, 90, 4],
+    [960, height - 200, 3],
+    [20, height - 160, 4],
   ].forEach(([x, y, scale]) =>
     stamp(ctx, HEART_PATH, x ?? 0, y ?? 0, scale ?? 1, "#FFB3CF"),
   );
@@ -110,32 +143,44 @@ export async function drawCaseCard(
   ctx.fillStyle = INK;
   ctx.font = "58px Chango, sans-serif";
   ctx.fillText("Relationship Court", WIDTH / 2, 110);
-  ctx.font = "700 40px 'Baloo 2', sans-serif";
+  ctx.font = BODY_FONT;
   ctx.fillText(
     `Case ${record.caseNumber}: ${nameOf(record.prosecutor)} v ${nameOf(record.defendant)}`,
     WIDTH / 2,
     170,
   );
-
-  panel(ctx, 70, 210, 940, 150, "#FFE27A");
+  panel(ctx, 70, 205, 940, 150, "#FFF4F9");
   ctx.fillStyle = INK;
   ctx.font = "44px Chango, sans-serif";
-  writeLines(ctx, record.headline.toUpperCase(), WIDTH / 2, 268, 860, 56, 2);
+  writeLines(ctx, record.headline.toUpperCase(), WIDTH / 2, 263, 860, 56, 2);
 
+  // The prosecutor sits on the left, the defendant on the right, the judge between.
+  let y = CONVERSATION_TOP;
   ctx.textAlign = "left";
-  panel(ctx, 70, 395, 940, 205, "#FFFFFF");
-  ctx.fillStyle = INK;
-  ctx.font = "800 32px 'Baloo 2', sans-serif";
-  ctx.fillText("THE ACCUSATION", 110, 445);
-  ctx.font = "700 38px 'Baloo 2', sans-serif";
-  writeLines(ctx, record.accusation, 110, 495, 860, 46, 2);
-
-  panel(ctx, 70, 630, 940, 205, "#FFFFFF");
-  ctx.fillStyle = INK;
-  ctx.font = "800 32px 'Baloo 2', sans-serif";
-  ctx.fillText("THE DEFENSE", 110, 680);
-  ctx.font = "700 38px 'Baloo 2', sans-serif";
-  writeLines(ctx, record.defense, 110, 730, 860, 46, 2);
+  for (const { entry, lines, height: bubbleHeight } of bubbles) {
+    const judge = entry.speaker === "judge";
+    const prosecutor = entry.speaker === record.prosecutor;
+    const x = judge ? 110 : prosecutor ? 70 : 150;
+    panel(
+      ctx,
+      x,
+      y,
+      BUBBLE_WIDTH,
+      bubbleHeight,
+      judge ? "#FFFFFF" : prosecutor ? "#FFE27A" : "#8FD9FF",
+    );
+    const speaker = judge ? "Judge Cupid" : nameOf(entry.speaker);
+    const label =
+      entry.label === "Judge" ? speaker : `${speaker}: ${entry.label}`;
+    ctx.fillStyle = INK;
+    ctx.font = "800 28px 'Baloo 2', sans-serif";
+    ctx.fillText(label, x + 30, y + 42);
+    ctx.font = BODY_FONT;
+    lines.forEach((line, index) =>
+      ctx.fillText(line, x + 30, y + 88 + index * BUBBLE_LINE),
+    );
+    y += bubbleHeight + BUBBLE_GAP;
+  }
 
   const word =
     record.ending === "dismissed"
@@ -144,7 +189,7 @@ export async function drawCaseCard(
         ? "GUILTY"
         : "NOT GUILTY";
   ctx.save();
-  ctx.translate(WIDTH / 2, 905);
+  ctx.translate(WIDTH / 2, y + 60);
   ctx.rotate(-0.05);
   ctx.textAlign = "center";
   ctx.font = "84px Chango, sans-serif";
@@ -154,36 +199,37 @@ export async function drawCaseCard(
   ctx.fillStyle = "#FFE27A";
   ctx.fillText(word, 0, 20);
   ctx.restore();
+  y += 130;
 
   ctx.textAlign = "center";
   ctx.fillStyle = INK;
-  ctx.font = "700 36px 'Baloo 2', sans-serif";
-  const quoteEnd = writeLines(
-    ctx,
-    `"${record.quote}"`,
-    WIDTH / 2,
-    985,
-    900,
-    44,
-    2,
+  ctx.font = BODY_FONT;
+  quoteLines.forEach((line, index) =>
+    ctx.fillText(line, WIDTH / 2, y + index * BUBBLE_LINE),
   );
+  y += quoteLines.length * BUBBLE_LINE;
 
-  const boxTop = Math.max(quoteEnd, 1045);
   if (record.ending === "pardoned") {
-    stamp(ctx, KISS_PATH, WIDTH / 2 - 108, boxTop - 25, 1.8, "#FF3B6B");
+    stamp(ctx, KISS_PATH, WIDTH / 2 - 108, y, 1.8, "#FF3B6B");
     ctx.fillStyle = INK;
     ctx.font = "44px Chango, sans-serif";
-    ctx.fillText("PARDONED WITH A KISS", WIDTH / 2, boxTop + 160);
+    ctx.fillText("PARDONED WITH A KISS", WIDTH / 2, y + 185);
   } else if (record.punishment) {
-    ctx.font = "800 32px 'Baloo 2', sans-serif";
-    ctx.fillText("PUNISHMENT", WIDTH / 2, boxTop + 20);
-    ctx.font = "700 36px 'Baloo 2', sans-serif";
-    writeLines(ctx, record.punishment, WIDTH / 2, boxTop + 66, 840, 44, 2);
+    ctx.font = "800 30px 'Baloo 2', sans-serif";
+    ctx.fillText("PUNISHMENT", WIDTH / 2, y + 30);
+    ctx.font = BODY_FONT;
+    punishmentLines.forEach((line, index) =>
+      ctx.fillText(line, WIDTH / 2, y + 76 + index * BUBBLE_LINE),
+    );
   }
 
   ctx.fillStyle = INK;
   ctx.font = "800 34px 'Baloo 2', sans-serif";
-  ctx.fillText("Judged by Cupid. Played on TwinThreads.", WIDTH / 2, 1305);
+  ctx.fillText(
+    "Judged by Cupid. Played on TwinThreads.",
+    WIDTH / 2,
+    height - 45,
+  );
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

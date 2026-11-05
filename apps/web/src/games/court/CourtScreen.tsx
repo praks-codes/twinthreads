@@ -37,6 +37,12 @@ const THINKING: Partial<Record<CourtView["stage"], readonly string[]>> = {
   ],
 };
 
+const LAWYER_WAIT = [
+  "Your lawyer is reading your case...",
+  "Your lawyer is looking for a good excuse...",
+  "Your lawyer is asking a friend for help...",
+] as const;
+
 function useRotatingLine(lines: readonly string[] | undefined): string {
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -264,6 +270,9 @@ function LawyerCards({
   onPick: (text: string) => void;
   onAsk: () => void;
 }) {
+  const waiting = useRotatingLine(
+    game.lawyerStatus === "pending" ? LAWYER_WAIT : undefined,
+  );
   if (game.lawyerStatus === "idle") {
     return (
       <button type="button" className="court-lawyer" onClick={onAsk}>
@@ -272,9 +281,7 @@ function LawyerCards({
     );
   }
   if (game.lawyerStatus === "pending") {
-    return (
-      <Waiting>Your lawyer is frantically searching the fridge...</Waiting>
-    );
+    return <Waiting>{waiting}</Waiting>;
   }
   return (
     <Cards
@@ -413,6 +420,10 @@ function CaseFilePanel({
         headline: namedRef.current(record.headline),
         quote: namedRef.current(record.quote),
         punishment: record.punishment && namedRef.current(record.punishment),
+        conversation: record.conversation.map((entry) => ({
+          ...entry,
+          text: namedRef.current(entry.text),
+        })),
       },
       nameOfRef.current,
     )
@@ -431,11 +442,13 @@ function CaseFilePanel({
   return (
     <>
       {card ? (
-        <img
-          className="court-card-preview"
-          src={card.url}
-          alt={`Case ${record?.caseNumber} card: ${record?.headline}`}
-        />
+        <div className="court-card-scroll" tabIndex={0}>
+          <img
+            className="court-card-preview"
+            src={card.url}
+            alt={`Case ${record?.caseNumber} card: ${record?.headline}`}
+          />
+        </div>
       ) : (
         <Waiting>The court artist is drawing your case...</Waiting>
       )}
