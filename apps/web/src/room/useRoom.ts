@@ -18,6 +18,9 @@ type RoomSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 const RECONNECT_DELAY_MS = 2000;
 const REJOIN_RETRY_MS = 5000;
 
+// Court isn't playable until milestone 3, so development uses the test game.
+const GAME_ID = import.meta.env.DEV ? "test-game" : "court";
+
 // In development the Vite dev server proxies to the server, so any device works.
 const SERVER_URL = import.meta.env.DEV
   ? undefined
@@ -34,6 +37,7 @@ export function useRoom() {
   const pendingNameRef = useRef("");
   const rejoiningRef = useRef(false);
   const replacedRef = useRef(false);
+  const stageRef = useRef("");
 
   const updateSession = useCallback((next: RoomSession | null) => {
     sessionRef.current = next;
@@ -117,7 +121,12 @@ export function useRoom() {
     });
 
     socket.on("room:state", (next) => {
-      if (sessionRef.current?.code === next.code) setState(next);
+      if (sessionRef.current?.code !== next.code) return;
+      setState(next);
+      // An error about the last phase or status no longer applies.
+      const stage = `${next.phase}/${next.status}`;
+      if (stage !== stageRef.current) setNotice(null);
+      stageRef.current = stage;
     });
 
     socket.on("room:error", onError);
@@ -144,7 +153,7 @@ export function useRoom() {
   const createRoom = useCallback((displayName: string) => {
     pendingNameRef.current = displayName.trim();
     setNotice(null);
-    socketRef.current?.emit("room:create", { gameId: "court", displayName });
+    socketRef.current?.emit("room:create", { gameId: GAME_ID, displayName });
   }, []);
 
   const joinRoom = useCallback((code: string, displayName: string) => {
@@ -160,6 +169,21 @@ export function useRoom() {
     setNotice(null);
   }, [updateSession]);
 
+  const setReady = useCallback((ready: boolean) => {
+    setNotice(null);
+    socketRef.current?.emit("room:ready", { ready });
+  }, []);
+
+  const sendAction = useCallback((type: string, payload: unknown) => {
+    setNotice(null);
+    socketRef.current?.emit("game:action", { type, payload });
+  }, []);
+
+  const rematch = useCallback(() => {
+    setNotice(null);
+    socketRef.current?.emit("room:rematch", {});
+  }, []);
+
   return {
     connected,
     session,
@@ -168,5 +192,8 @@ export function useRoom() {
     createRoom,
     joinRoom,
     leaveRoom,
+    setReady,
+    sendAction,
+    rematch,
   };
 }
