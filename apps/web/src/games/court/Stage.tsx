@@ -1,22 +1,13 @@
 import {
   MOOD_EMOJI,
-  WITNESSES,
   type Crowd,
   type CourtView,
   type JudgeMood,
 } from "@twinthreads/court";
 import { useEffect, useRef, useState } from "react";
-import {
-  Blob,
-  Cupid,
-  Gummy,
-  HEART_PATH,
-  KISS_PATH,
-  strokesToPath,
-} from "./characters.js";
+import { Blob, Cupid, HEART_PATH, KISS_PATH } from "./characters.js";
 
 export const SEAT_COLORS = ["#FFE27A", "#8FD9FF"] as const;
-const GUMMY_COLORS = ["#8FD9FF", "#FFE27A", "#B9F2C8", "#FFB070", "#D7B8FF"];
 const CROWD_WORD: Record<Crowd, string> = {
   calm: "",
   gasp: "GASP!",
@@ -49,18 +40,12 @@ function Bubble({ text, side }: { text: string; side: "left" | "right" }) {
 }
 
 function seatSpeech(game: CourtView, playerId: string): string {
-  const { stage, currentMove, objection } = game;
+  const { stage, objection } = game;
   const says: string[] = [];
   if (stage === "ruling" && objection?.by === playerId && objection.argument) {
     says.push(objection.argument);
   } else if (stage === "crossReact" && playerId === game.defendant) {
     says.push(game.crossAnswer ?? "");
-  } else if (stage === "moveReact" && currentMove?.by === playerId) {
-    const witness =
-      currentMove.kind === "witness" ? WITNESSES[currentMove.option] : null;
-    says.push(
-      witness ? `${witness.name}: ${currentMove.says}` : currentMove.says,
-    );
   } else if (stage === "aftermath" && game.take !== null) {
     if (playerId === game.verdict?.loser) {
       says.push(
@@ -81,13 +66,11 @@ function seatSpeech(game: CourtView, playerId: string): string {
 }
 
 function stageCrowd(game: CourtView): { crowd: Crowd; word: string } {
-  if (game.stage === "closing") return { crowd: "gasp", word: "GO GO GO!" };
   if (game.stage === "objection") return { crowd: "gasp", word: "OOOH!" };
   const reaction =
     game.stage === "ruling" ? game.objection?.reaction : game.reaction;
   const showing = [
     "hearing",
-    "moveReact",
     "ruling",
     "crossReact",
     "verdict",
@@ -126,40 +109,20 @@ function EmoteFloat({ count, emoji }: { count: number; emoji: string }) {
   );
 }
 
-function CrowdGroup({ crowd, start }: { crowd: Crowd; start: number }) {
-  return (
-    <>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <span
-          key={i}
-          className={crowd === "calm" ? "court-gummy" : "court-gummy court-hop"}
-          style={{ animationDelay: `${-0.13 * i - start * 0.2}s` }}
-        >
-          <Gummy
-            crowd={crowd}
-            color={GUMMY_COLORS[(i + start) % 5] ?? "#8FD9FF"}
-          />
-        </span>
-      ))}
-    </>
-  );
-}
-
 export function Stage({
   game,
+  myPlayerId,
+  partnerId,
   nameOf,
   judgeMood,
 }: {
   game: CourtView;
+  myPlayerId: string;
+  partnerId: string;
   nameOf: (playerId: string) => string;
   judgeMood: JudgeMood;
 }) {
-  const [left, right] = game.playerIds;
-  const { crowd, word } = stageCrowd(game);
-  const showExhibit =
-    game.stage === "moveReact" &&
-    game.currentMove?.kind === "evidence" &&
-    game.currentMove.strokes.length > 0;
+  const { word } = stageCrowd(game);
   const pardoned = game.stage === "aftermath" && game.ending === "pardoned";
 
   const seat = (playerId: string, side: "left" | "right", color: string) => {
@@ -195,14 +158,6 @@ export function Stage({
           <path d={HEART_PATH} />
         </svg>
         <div className="court-floor" />
-        <div className="court-crowd court-crowd--left">
-          <CrowdGroup crowd={crowd} start={0} />
-        </div>
-        <div className="court-crowd court-crowd--right">
-          <CrowdGroup crowd={crowd} start={2} />
-        </div>
-        <div className="court-rail court-rail--left" />
-        <div className="court-rail court-rail--right" />
         <div className="court-judge court-wobble">
           <Cupid mood={judgeMood} />
         </div>
@@ -233,20 +188,8 @@ export function Stage({
             </div>
           </>
         )}
-        {seat(left, "left", SEAT_COLORS[0])}
-        {seat(right, "right", SEAT_COLORS[1])}
-        {showExhibit && game.currentMove && (
-          <div className="court-exhibit court-pop">
-            <strong>Exhibit A</strong>
-            <svg
-              viewBox="0 0 340 150"
-              role="img"
-              aria-label="Exhibit A drawing"
-            >
-              <path d={strokesToPath(game.currentMove.strokes)} />
-            </svg>
-          </div>
-        )}
+        {seat(myPlayerId, "left", SEAT_COLORS[0])}
+        {seat(partnerId, "right", SEAT_COLORS[1])}
         {pardoned && (
           <svg
             className="court-kiss court-stamp"

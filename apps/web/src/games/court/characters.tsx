@@ -1,4 +1,4 @@
-import type { Crowd, JudgeMood, Mood } from "@twinthreads/court";
+import type { JudgeMood, Mood } from "@twinthreads/court";
 
 const INK = "#3D0D33";
 const line = { fill: "none", stroke: INK, strokeLinecap: "round" } as const;
@@ -216,45 +216,8 @@ export function Blob({
   );
 }
 
-export function Gummy({ color, crowd }: { color: string; crowd: Crowd }) {
-  return (
-    <svg viewBox="0 0 40 52" aria-hidden="true">
-      <g fill={color} stroke={INK} strokeWidth="2">
-        <circle cx="10" cy="7" r="5" />
-        <circle cx="30" cy="7" r="5" />
-        <ellipse cx="20" cy="39" rx="14" ry="12" />
-        <circle cx="20" cy="17" r="14" />
-      </g>
-      <circle cx="15" cy="16" r="2" fill={INK} />
-      <circle cx="25" cy="16" r="2" fill={INK} />
-      {crowd === "calm" && (
-        <path d="M16 23 Q20 26 24 23" {...line} strokeWidth="2" />
-      )}
-      {crowd === "gasp" && <ellipse cx="20" cy="24" rx="3" ry="4" fill={INK} />}
-      {crowd === "boo" && (
-        <path d="M15 26 Q20 21 25 26" {...line} strokeWidth="2" />
-      )}
-      {(crowd === "aww" || crowd === "laugh") && (
-        <path d="M15 22 Q20 29 25 22 Z" fill="#FF3B6B" stroke={INK} />
-      )}
-    </svg>
-  );
-}
-
 export const KISS_PATH =
   "M10 38 C30 14 48 12 60 24 C72 12 90 14 110 38 C90 40 75 42 60 42 C45 42 30 40 10 38 Z M14 42 C30 46 45 48 60 48 C75 48 90 46 106 42 C92 66 74 74 60 74 C46 74 28 66 14 42 Z";
 
 export const HEART_PATH =
   "M12 21 C4 14 2 10 2 7 C2 4 4.5 2 7 2 C9 2 11 3 12 5 C13 3 15 2 17 2 C19.5 2 22 4 22 7 C22 10 20 14 12 21 Z";
-
-export function strokesToPath(strokes: number[][]): string {
-  return strokes
-    .map((stroke) => {
-      let path = "";
-      for (let i = 0; i + 1 < stroke.length; i += 2) {
-        path += `${i === 0 ? "M" : "L"}${stroke[i]} ${stroke[i + 1]} `;
-      }
-      return path;
-    })
-    .join("");
-}

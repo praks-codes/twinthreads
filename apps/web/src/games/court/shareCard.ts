@@ -1,8 +1,4 @@
-import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
-  type CaseRecord,
-} from "@twinthreads/court";
+import type { CaseRecord } from "@twinthreads/court";
 import { HEART_PATH, KISS_PATH } from "./characters.js";
 
 const WIDTH = 1080;
@@ -172,7 +168,6 @@ export async function drawCaseCard(
     2,
   );
 
-  const hasExhibit = (record.exhibit?.strokes.length ?? 0) > 0;
   const boxTop = Math.max(quoteEnd, 1045);
   if (record.ending === "pardoned") {
     stamp(ctx, KISS_PATH, WIDTH / 2 - 108, boxTop - 25, 1.8, "#FF3B6B");
@@ -184,28 +179,6 @@ export async function drawCaseCard(
     ctx.fillText("PUNISHMENT", WIDTH / 2, boxTop + 20);
     ctx.font = "700 36px 'Baloo 2', sans-serif";
     writeLines(ctx, record.punishment, WIDTH / 2, boxTop + 66, 840, 44, 2);
-  }
-
-  if (hasExhibit && record.ending !== "pardoned" && record.exhibit) {
-    const scale = 0.45;
-    const x = 760;
-    const y = 1185;
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(x, y, CANVAS_WIDTH * scale, CANVAS_HEIGHT * scale);
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = INK;
-    ctx.strokeRect(x, y, CANVAS_WIDTH * scale, CANVAS_HEIGHT * scale);
-    ctx.strokeStyle = "#FF3B6B";
-    for (const stroke of record.exhibit.strokes) {
-      ctx.beginPath();
-      for (let i = 0; i + 1 < stroke.length; i += 2) {
-        ctx.lineTo(
-          x + (stroke[i] ?? 0) * scale,
-          y + (stroke[i + 1] ?? 0) * scale,
-        );
-      }
-      ctx.stroke();
-    }
   }
 
   ctx.fillStyle = INK;

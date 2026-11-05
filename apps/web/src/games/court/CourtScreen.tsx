@@ -1,33 +1,20 @@
 import {
-  BRIBES,
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
   EMOTES,
   EXAMPLE_DEFENSES,
   FILL_IN_ACCUSATIONS,
   JUDGES,
-  MAX_CAPTION,
   MAX_STATEMENT,
   OBJECTION_GROUNDS,
   READY_ACCUSATIONS,
-  WITNESSES,
   type CourtView,
   type JudgeId,
   type JudgeMood,
-  type MoveKind,
   type RecordEntry,
 } from "@twinthreads/court";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Countdown } from "../../components/Countdown.js";
 import type { GameScreenProps } from "../registry.js";
-import { HEART_PATH, strokesToPath } from "./characters.js";
+import { HEART_PATH } from "./characters.js";
 import "./court.css";
 import { drawCaseCard, shareCard } from "./shareCard.js";
 import { Stage } from "./Stage.js";
@@ -36,10 +23,6 @@ const THINKING: Partial<Record<CourtView["stage"], readonly string[]>> = {
   hearing: [
     "Judge Cupid is reading this very slowly...",
     "The Court is pretending to take notes...",
-  ],
-  moveReact: [
-    "Judge Cupid is examining this closely...",
-    "The Court adjusts its wig...",
   ],
   ruling: ["Judge Cupid is considering your objection...", "Order! Order..."],
   crossExam: ["Judge Cupid is preparing a question..."],
@@ -305,177 +288,6 @@ function LawyerCards({
   );
 }
 
-function DrawPad({
-  strokes,
-  onChange,
-}: {
-  strokes: number[][];
-  onChange: (strokes: number[][]) => void;
-}) {
-  const drawing = useRef(false);
-  const point = (event: PointerEvent<SVGSVGElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    return [
-      Math.round(
-        Math.min(
-          CANVAS_WIDTH,
-          Math.max(
-            0,
-            ((event.clientX - rect.left) / rect.width) * CANVAS_WIDTH,
-          ),
-        ),
-      ),
-      Math.round(
-        Math.min(
-          CANVAS_HEIGHT,
-          Math.max(
-            0,
-            ((event.clientY - rect.top) / rect.height) * CANVAS_HEIGHT,
-          ),
-        ),
-      ),
-    ];
-  };
-  const total = strokes.reduce((sum, stroke) => sum + stroke.length, 0);
-  return (
-    <svg
-      className="court-drawpad"
-      viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
-      role="img"
-      aria-label="Drawing area for Exhibit A"
-      onPointerDown={(event) => {
-        event.currentTarget.setPointerCapture(event.pointerId);
-        drawing.current = true;
-        onChange([...strokes, point(event)]);
-      }}
-      onPointerMove={(event) => {
-        if (!drawing.current || total > 1100) return;
-        const last = strokes[strokes.length - 1] ?? [];
-        onChange([...strokes.slice(0, -1), [...last, ...point(event)]]);
-      }}
-      onPointerUp={() => {
-        drawing.current = false;
-      }}
-    >
-      <path d={strokesToPath(strokes)} />
-    </svg>
-  );
-}
-
-function MovesPanel({
-  game,
-  isMine,
-  moverName,
-  onAction,
-}: {
-  game: CourtView;
-  isMine: boolean;
-  moverName: string;
-  onAction: GameScreenProps["onAction"];
-}) {
-  const [view, setView] = useState<MoveKind | null>(null);
-  const [strokes, setStrokes] = useState<number[][]>([]);
-  const [caption, setCaption] = useState("");
-
-  useEffect(() => {
-    setView(null);
-    setStrokes([]);
-    setCaption("");
-  }, [game.turn]);
-
-  if (!isMine) {
-    return (
-      <Waiting>{moverName} is plotting a way to tip the scales...</Waiting>
-    );
-  }
-  const send = (kind: MoveKind, option: number) =>
-    onAction("move", { kind, option, caption: caption.trim(), strokes });
-
-  if (view === "evidence") {
-    return (
-      <>
-        <DrawPad strokes={strokes} onChange={setStrokes} />
-        <input
-          aria-label="Caption for Exhibit A"
-          maxLength={MAX_CAPTION}
-          value={caption}
-          onChange={(event) => setCaption(event.target.value)}
-          placeholder="Caption: the carton, moments before..."
-        />
-        <button
-          type="button"
-          className="court-big"
-          disabled={strokes.length === 0 && !caption.trim()}
-          onClick={() => send("evidence", 0)}
-        >
-          Submit Exhibit A
-        </button>
-        <button
-          type="button"
-          className="court-plain"
-          onClick={() => setView(null)}
-        >
-          Back
-        </button>
-      </>
-    );
-  }
-  if (view === "witness" || view === "bribe") {
-    const list = view === "witness" ? WITNESSES : BRIBES;
-    return (
-      <>
-        <Cards
-          items={list.map((item, index) => ({
-            key: String(index),
-            title: item.name,
-            text: item.note,
-          }))}
-          selected={null}
-          onPick={(key) => send(view, Number(key))}
-        />
-        <button
-          type="button"
-          className="court-plain"
-          onClick={() => setView(null)}
-        >
-          Back
-        </button>
-      </>
-    );
-  }
-  const options: { kind: MoveKind; title: string; text: string }[] = [
-    { kind: "evidence", title: "Present evidence", text: "Draw Exhibit A" },
-    {
-      kind: "witness",
-      title: "Call a witness",
-      text: "A gummy takes the stand. It could backfire",
-    },
-    { kind: "bribe", title: "Bribe the judge", text: "Risky. Very risky" },
-  ];
-  return (
-    <>
-      <Cards
-        items={options
-          .filter((option) => !game.myUsedMoves.includes(option.kind))
-          .map((option) => ({
-            key: option.kind,
-            title: option.title,
-            text: option.text,
-          }))}
-        selected={null}
-        onPick={(key) => setView(key as MoveKind)}
-      />
-      <button
-        type="button"
-        className="court-plain"
-        onClick={() => onAction("pass", {})}
-      >
-        Rest for now
-      </button>
-    </>
-  );
-}
-
 function ObjectionPanel({
   onArgue,
 }: {
@@ -566,75 +378,35 @@ function AnswerPanel({
   );
 }
 
-function ClosingPanel({
-  game,
-  deadline,
-  serverTime,
-  onAction,
-}: {
-  game: CourtView;
-  deadline: number | null;
-  serverTime: number;
-  onAction: GameScreenProps["onAction"];
-}) {
-  const skew = useMemo(() => serverTime - Date.now(), [serverTime]);
-  const [now, setNow] = useState(() => Date.now() + skew);
-  const buffer = useRef(0);
-  const [myTaps, setMyTaps] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(Date.now() + skew);
-      if (buffer.current > 0) {
-        onAction("tap", { count: Math.min(buffer.current, 20) });
-        buffer.current = Math.max(0, buffer.current - 20);
-      }
-    }, 300);
-    return () => clearInterval(timer);
-  }, [skew, onAction]);
-
-  const left = deadline === null ? 0 : Math.max(0, deadline - now);
-  const countingDown = left > game.tapWindowMs;
-  return (
-    <>
-      <p className="court-waiting">
-        {countingDown
-          ? `Get ready: ${Math.ceil((left - game.tapWindowMs) / 1000)}`
-          : `${(left / 1000).toFixed(1)} seconds left. ${myTaps} taps`}
-      </p>
-      <button
-        type="button"
-        className="court-plead court-pulse"
-        disabled={countingDown || left === 0}
-        onPointerDown={() => {
-          buffer.current += 1;
-          setMyTaps((taps) => taps + 1);
-        }}
-      >
-        {countingDown ? "WAIT" : "PLEAD!"}
-      </button>
-    </>
-  );
-}
-
 function CaseFilePanel({
   game,
   displayNameOf,
+  named,
   onAction,
 }: {
   game: CourtView;
   displayNameOf: (playerId: string) => string;
+  named: (text: string) => string;
   onAction: GameScreenProps["onAction"];
 }) {
   const record = game.latestCase;
   const [card, setCard] = useState<{ blob: Blob; url: string } | null>(null);
   const nameOfRef = useRef(displayNameOf);
+  const namedRef = useRef(named);
 
   useEffect(() => {
     if (!record) return;
     let cancelled = false;
     let url = "";
-    drawCaseCard(record, nameOfRef.current)
+    drawCaseCard(
+      {
+        ...record,
+        headline: namedRef.current(record.headline),
+        quote: namedRef.current(record.quote),
+        punishment: record.punishment && namedRef.current(record.punishment),
+      },
+      nameOfRef.current,
+    )
       .then((blob) => {
         if (cancelled) return;
         url = URL.createObjectURL(blob);
@@ -683,9 +455,11 @@ function CaseFilePanel({
 function CourtRecord({
   record,
   nameOf,
+  named,
 }: {
   record: RecordEntry[];
   nameOf: (playerId: string) => string;
+  named: (text: string) => string;
 }) {
   const list = useRef<HTMLOListElement>(null);
   useEffect(() => {
@@ -718,16 +492,7 @@ function CourtRecord({
                   {judge ? "Judge Cupid" : nameOf(entry.speaker)}
                   {entry.label === "Judge" ? "" : `: ${entry.label}`}
                 </strong>
-                <span>{entry.text}</span>
-                {entry.strokes && (
-                  <svg
-                    viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
-                    role="img"
-                    aria-label="The drawing submitted as Exhibit A"
-                  >
-                    <path d={strokesToPath(entry.strokes)} />
-                  </svg>
-                )}
+                <span>{named(entry.text)}</span>
               </div>
             </li>
           );
@@ -792,6 +557,14 @@ export default function CourtScreen({
         "Your partner");
   const partnerId = game.playerIds.find((id) => id !== myPlayerId) ?? "";
   const partner = nameOf(partnerId);
+  const displayNameOf = (playerId: string) =>
+    state.players.find((p) => p.playerId === playerId)?.displayName ??
+    "Partner";
+  // The AI only knows "Player 1" and "Player 2", and sometimes says so out loud.
+  const named = (text: string) =>
+    text
+      .replace(/\bPlayer 1\b/g, displayNameOf(game.playerIds[0]))
+      .replace(/\bPlayer 2\b/g, displayNameOf(game.playerIds[1]));
   const partnerAway = state.status === "reconnecting";
   const iAmProsecutor = game.prosecutor === myPlayerId;
   const iAmDefendant = game.defendant === myPlayerId;
@@ -805,8 +578,9 @@ export default function CourtScreen({
     (game.judgeThinking ? null : reaction?.judgeMood) ??
     JUDGES[game.judge].mood;
 
-  // The first player's bar is yellow, and fills from the left.
-  const meterName = `${nameOf(game.playerIds[0])} against ${nameOf(game.playerIds[1])}`;
+  // Your own side is always on the left, on the stage and on the meter.
+  const myMeter =
+    game.playerIds[0] === myPlayerId ? game.meter : 100 - game.meter;
   const waitOn = (text: string) =>
     partnerAway ? `${partner}'s phone has dozed off. Reconnecting...` : text;
 
@@ -824,15 +598,10 @@ export default function CourtScreen({
     judgeLine = iAmDefendant
       ? "Your defense? Choose your words poorly."
       : `${partner} is building a defense.`;
-  else if (stage === "moves")
-    judgeLine = `Tip the scales, round ${game.moveRound} of ${game.moveRounds}. If you dare.`;
   else if (stage === "objection") judgeLine = "On what grounds?";
   else if (stage === "crossExam") judgeLine = game.crossQuestion ?? "";
-  else if (stage === "closing") judgeLine = "Closing arguments. Plead for it!";
   else if (stage === "sealed") judgeLine = "My verdict is under this seal.";
   else if (stage === "punishment") judgeLine = "And now, the price.";
-
-  const mover = game.mover;
 
   let panel: ReactNode = null;
   switch (stage) {
@@ -901,23 +670,16 @@ export default function CourtScreen({
       );
       break;
     case "hearing":
-    case "moveReact":
     case "crossReact":
       panel = !game.judgeThinking && (
         <>
           <ObjectButton game={game} onAction={onAction} />
-          <ContinueButton game={game} label="Carry on" onAction={onAction} />
+          <ContinueButton
+            game={game}
+            label={stage === "crossReact" ? "Send it to the judge" : "Carry on"}
+            onAction={onAction}
+          />
         </>
-      );
-      break;
-    case "moves":
-      panel = (
-        <MovesPanel
-          game={game}
-          isMine={mover === myPlayerId}
-          moverName={partner}
-          onAction={onAction}
-        />
       );
       break;
     case "objection":
@@ -953,16 +715,6 @@ export default function CourtScreen({
         ) : (
           <Waiting>{waitOn(`${partner} is sweating...`)}</Waiting>
         );
-      break;
-    case "closing":
-      panel = (
-        <ClosingPanel
-          game={game}
-          deadline={state.deadline}
-          serverTime={state.serverTime}
-          onAction={onAction}
-        />
-      );
       break;
     case "deliberating":
       panel = (
@@ -1017,7 +769,7 @@ export default function CourtScreen({
               {nameOf(game.verdict?.loser ?? "")}{" "}
               {game.verdict?.loser === myPlayerId ? "are" : "is"} sentenced to
             </strong>
-            <span>{game.verdict?.punishment}</span>
+            <span>{named(game.verdict?.punishment ?? "")}</span>
           </div>
           {iWon ? (
             <>
@@ -1080,10 +832,8 @@ export default function CourtScreen({
       panel = (
         <CaseFilePanel
           game={game}
-          displayNameOf={(playerId) =>
-            state.players.find((p) => p.playerId === playerId)?.displayName ??
-            "Partner"
-          }
+          displayNameOf={displayNameOf}
+          named={named}
           onAction={onAction}
         />
       );
@@ -1099,30 +849,24 @@ export default function CourtScreen({
           <span>
             Case {game.caseNumber} of {game.totalCases}
           </span>
-          {state.deadline !== null && stage !== "closing" && (
+          {state.deadline !== null && (
             <Countdown
               deadline={state.deadline}
               serverTime={state.serverTime}
             />
           )}
           <span>
-            {nameOf(game.playerIds[0])} {game.scores[game.playerIds[0]] ?? 0} ·{" "}
-            {nameOf(game.playerIds[1])} {game.scores[game.playerIds[1]] ?? 0}
+            You {game.scores[myPlayerId] ?? 0} · {partner}{" "}
+            {game.scores[partnerId] ?? 0}
           </span>
         </div>
         <div
           className="court-meter"
           role="img"
-          aria-label={`Case meter, ${meterName}: ${Math.round(game.meter)} out of 100`}
+          aria-label={`Case meter, you against ${partner}: ${Math.round(myMeter)} out of 100`}
         >
-          <div
-            className="court-meter__fill"
-            style={{ width: `${game.meter}%` }}
-          />
-          <div
-            className="court-meter__spark"
-            style={{ left: `${game.meter}%` }}
-          >
+          <div className="court-meter__fill" style={{ width: `${myMeter}%` }} />
+          <div className="court-meter__spark" style={{ left: `${myMeter}%` }}>
             <svg viewBox="0 0 36 36" aria-hidden="true">
               <path d="M18 1 L22 14 L35 18 L22 22 L18 35 L14 22 L1 18 L14 14 Z" />
             </svg>
@@ -1130,7 +874,13 @@ export default function CourtScreen({
         </div>
       </div>
       <div className="court__layout">
-        <Stage game={game} nameOf={nameOf} judgeMood={judgeMood} />
+        <Stage
+          game={game}
+          myPlayerId={myPlayerId}
+          partnerId={partnerId}
+          nameOf={nameOf}
+          judgeMood={judgeMood}
+        />
         <div className="court__panel">
           <div className="court-emotes">
             {EMOTES.map((emoji) => (
@@ -1153,7 +903,7 @@ export default function CourtScreen({
                   : "court-line court-pop"
               }
             >
-              {judgeLine}
+              {named(judgeLine)}
             </div>
           )}
           {game.autoPicked && stage === "hearing" && (
@@ -1161,7 +911,7 @@ export default function CourtScreen({
           )}
           {panel}
         </div>
-        <CourtRecord record={game.record} nameOf={nameOf} />
+        <CourtRecord record={game.record} nameOf={nameOf} named={named} />
       </div>
       {stage === "aftermath" && game.ending === "pardoned" && (
         <div className="court-hearts" aria-hidden="true">

@@ -185,49 +185,6 @@
     calc(var(--u) * 44) calc(var(--u) * 44);
 }
 
-.court-crowd {
-  position: absolute;
-  top: calc(var(--u) * 56);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  width: calc(var(--u) * 110);
-}
-
-.court-crowd--left {
-  left: calc(var(--u) * 26);
-}
-
-.court-crowd--right {
-  right: calc(var(--u) * 26);
-}
-
-.court-gummy {
-  display: block;
-  width: calc(var(--u) * 36);
-  margin: calc(var(--u) * -4) calc(var(--u) * -1);
-  line-height: 0;
-}
-
-.court-rail {
-  position: absolute;
-  top: calc(var(--u) * 142);
-  width: calc(var(--u) * 124);
-  height: calc(var(--u) * 18);
-  box-sizing: border-box;
-  border: 3px solid var(--ink);
-  border-radius: 9px;
-  background: repeating-linear-gradient(90deg, #fff4f9 0 9px, #ff3b6b 9px 18px);
-}
-
-.court-rail--left {
-  left: calc(var(--u) * 16);
-}
-
-.court-rail--right {
-  right: calc(var(--u) * 16);
-}
-
 .court-judge {
   position: absolute;
   left: calc(var(--u) * 139);
@@ -271,22 +228,22 @@
 
 .court-shout {
   position: absolute;
-  top: calc(var(--u) * 28);
+  top: calc(var(--u) * 78);
   padding: 0 calc(var(--u) * 7);
   border: 3px solid var(--ink);
   border-radius: 12px;
   font-family: Chango, sans-serif;
-  font-size: calc(var(--u) * 14);
+  font-size: calc(var(--u) * 12.5);
 }
 
 .court-shout--left {
-  left: calc(var(--u) * 8);
+  left: calc(var(--u) * 6);
   background: var(--butter);
   rotate: -5deg;
 }
 
 .court-shout--right {
-  right: calc(var(--u) * 8);
+  right: calc(var(--u) * 6);
   background: var(--sky);
   rotate: 5deg;
 }
@@ -373,37 +330,6 @@
 .court-bubble--right {
   right: calc(var(--u) * 8);
   border-radius: 16px 16px 4px 16px;
-}
-
-.court-exhibit {
-  position: absolute;
-  left: calc(var(--u) * 77);
-  top: calc(var(--u) * 26);
-  z-index: 3;
-  display: grid;
-  width: calc(var(--u) * 236);
-  box-sizing: border-box;
-  padding: calc(var(--u) * 4) calc(var(--u) * 8);
-  border: 3px solid var(--ink);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 5px 0 var(--ink);
-  text-align: center;
-  font-family: Chango, sans-serif;
-  font-size: calc(var(--u) * 13);
-}
-
-.court-exhibit strong {
-  font-weight: 400;
-}
-
-.court-exhibit path,
-.court-drawpad path {
-  fill: none;
-  stroke: var(--berry);
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .court-kiss {
@@ -571,21 +497,6 @@
   font-weight: 800;
 }
 
-.court-record__entry svg {
-  width: 140px;
-  border: 2px dashed var(--ink);
-  border-radius: 8px;
-  background: #fff;
-}
-
-.court-record__entry path {
-  fill: none;
-  stroke: var(--berry);
-  stroke-width: 6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 .court-field {
   display: grid;
   gap: 4px;
@@ -643,21 +554,6 @@
   box-shadow: 0 4px 0 var(--ink);
   font-family: Chango, sans-serif !important;
   font-size: 15px !important;
-}
-
-.court-plead {
-  flex: 1;
-  min-height: 170px;
-  border: 3px solid var(--ink);
-  border-radius: 34px;
-  background: var(--berry);
-  box-shadow: 0 7px 0 var(--ink);
-  color: #fff !important;
-  font-family: Chango, sans-serif !important;
-  font-size: 34px !important;
-  text-shadow: 2px 2px 0 var(--ink);
-  user-select: none;
-  touch-action: none !important;
 }
 
 .court-waiting {
@@ -784,16 +680,6 @@
   stroke-width: 1.5;
 }
 
-.court-drawpad {
-  width: 100%;
-  box-sizing: border-box;
-  border: 3px dashed var(--ink);
-  border-radius: 16px;
-  background: #fff;
-  cursor: crosshair;
-  touch-action: none;
-}
-
 .court-card-preview {
   display: block;
   width: min(100%, 320px);
@@ -825,10 +711,6 @@
 .court-wobble {
   animation: court-wobble 2.6s ease-in-out infinite;
   transform-origin: 50% 100%;
-}
-
-.court-hop {
-  animation: court-hop 0.45s ease-in-out infinite alternate;
 }
 
 .court-stamp {
@@ -868,15 +750,6 @@
   }
   50% {
     transform: rotate(2deg);
-  }
-}
-
-@keyframes court-hop {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-20%);
   }
 }
 
