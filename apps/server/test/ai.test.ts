@@ -86,6 +86,15 @@ describe("buildCourtPrompt", () => {
     }
   });
 
+  it("makes clear who the accuser and the accused are", () => {
+    const input = { prosecutor: "Player 1", defendant: "Player 2" };
+    const prompt = buildCourtPrompt({ id: "x", kind: "lawyer", input });
+    expect(prompt?.user).toContain("Player 1 is the accuser");
+    expect(prompt?.user).toContain("Player 2 is the accused");
+    expect(prompt?.user).toContain('"me" mean the accuser');
+    expect(prompt?.user).toContain("Your client is the accused");
+  });
+
   it("gives every kind of request the whole game so far", () => {
     const history = ["Case 1: Player 1 accuses Player 2.", "Judge: Old joke."];
     for (const kind of [

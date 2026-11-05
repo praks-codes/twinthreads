@@ -70,7 +70,8 @@ function gameSoFar(input: CourtInput): string {
   return `The whole game so far, oldest first:
 ${lines || "Nothing yet."}
 Score so far: ${input.score ?? "no points yet"}.
-In this case, ${input.prosecutor ?? "the prosecutor"} accuses ${input.defendant ?? "the defendant"}.`;
+In this case, ${input.prosecutor ?? "the prosecutor"} is the accuser and ${input.defendant ?? "the defendant"} is the accused.
+In the accusation, "I" and "me" mean the accuser, and the person who did the thing is the accused.`;
 }
 
 /** Null for anything this game doesn't ask for, so the backup lines are used. */
@@ -83,11 +84,11 @@ export function buildCourtPrompt(effect: GameEffect): CourtPrompt | null {
       return {
         system: system(
           LAWYER_ROLE,
-          `"suggestions": an array of exactly 3 objects with "style" (one of "Sincere", "Unhinged", "Blame the pet") and "text" (what your client says back to defend themself, as "I", at most 12 simple words. It must be sweet or silly, and never attack their partner)`,
+          `"suggestions": an array of exactly 3 objects with "style" (one of "Sincere", "Unhinged", "Blame the pet") and "text" (the exact words your client says to the accuser. Your client is the accused, so they are the one who did the thing. Speak as your client, using "I" for your client and "you" for the accuser. At most 12 simple words. It must be sweet or silly, and never attack their partner)`,
         ),
         user: input.question
-          ? `${so}\nThe judge just asked your client: ${quote(input.question)}\nGive 3 funny answers your client could say.`
-          : `${so}\nGive 3 funny things your client could say back to this accusation.`,
+          ? `${so}\nThe judge just asked your client: ${quote(input.question)}\nYour client is the accused. Give 3 funny answers your client could say.`
+          : `${so}\nYour client is the accused. Give 3 funny things your client could say to defend what they did.`,
         maxTokens: 220,
       };
     case "hearing":
