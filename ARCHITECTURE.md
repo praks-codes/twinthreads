@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 
-**TwinThreads** is a browser-based platform of two-player games for couples. This file describes its architecture. This is the source of truth for technical decisions. When a decision changes, update this file in the same pull request as the code.
+**TwinThreads** is a browser-based platform of two-player games for couples. This file describes its architecture. This is the source of truth for technical decisions. Product direction and milestones live in [docs/ROADMAP.md](docs/ROADMAP.md). When a decision changes, update this file in the same pull request as the code.
 
 Last updated: 2026-11-05
 
@@ -16,19 +16,11 @@ Last updated: 2026-11-05
 - The platform must be able to scale if a game goes viral, without a rewrite.
 - First version should cost nothing to build and run locally. Hosting is decided later (see section 12).
 
-## 2. Game lineup and build order
+## 2. Game lineup
 
-| Order | Game | Type | Engine needs |
-|---|---|---|---|
-| 1 | Relationship Court (flagship) | Turn-based, roles, timers, Game Master judge | Rounds, roles, timers, scoring |
-| 2 | Couple's Mystery | Asymmetric information co-op | Per-player views (secret clues) |
-| 3 | Love Kitchen: Chaos Mode | Real-time co-op | Event streaming, Phaser |
-| 4 | Love Quest (themed packs) | Shared decisions, resources | Branching state, content packs |
-| 5 | Trust Fall | Asymmetric information co-op | Per-player views |
-| 6 | Evil Couple Simulator | Standalone comedic game | To be designed |
-| Future | Our Little Monster | Persistent shared pet | Accounts, database |
+The game lineup and build order live in [docs/ROADMAP.md](docs/ROADMAP.md).
 
-Only Our Little Monster needs persistence. Everything else is ephemeral room state.
+Architecture consequence: only Our Little Monster needs persistence. Everything else is ephemeral room state.
 
 ## 3. Tech stack
 
@@ -259,15 +251,7 @@ If Node hosting proves painful, the game packages can be moved to a different ru
 
 ## 13. Milestones
 
-| # | Milestone | Done when |
-|---|---|---|
-| 0 | Repo and tooling | Empty apps run locally and on a phone |
-| 1 | Hello Room | Two phones share a room code, see each other live, survive a refresh |
-| 2 | Phase engine | A fake test game runs through every phase |
-| 3 | Court v0 | A couple can play three rounds start to finish, ugly UI is fine |
-| 4 | Court polish | Animations, sound, share card, 25 accusations, 12 defenses |
-| 5 | Public pages and hosting | Court live on a real domain, SEO pages indexed |
-| 6 | Couple's Mystery | Reuses the engine with minimal new platform code |
+Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## 14. Decision log
 
@@ -279,6 +263,7 @@ If Node hosting proves painful, the game packages can be moved to a different ru
 | 2026-11-05 | Hosting decided at milestone 5 | Architecture keeps the choice open |
 | 2026-11-05 | Game Master judges Court | No jury is possible with two players |
 | 2026-11-05 | Platform name is TwinThreads (briefly considered TwinStrings) | Repo is `twinthreads`, workspace packages use the `@twinthreads/*` scope |
+| 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
 
 ## 15. Open questions
 
