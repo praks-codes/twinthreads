@@ -10,7 +10,7 @@ Last updated: 2026-11-05
 
 - Every game is for **exactly two players**. No spectators, no matchmaking, no jury.
 - Players join a **private room** with a six-character code. **No signup, no login.**
-- Runs in any modern browser, **mobile-first**. Not a native app.
+- Runs in any modern browser, **mobile-first and responsive**. Phones, tablets and laptops are all fully supported, and the two players may be on different devices. Not a native app.
 - Each game gets its own fast, indexable web page (SEO matters).
 - Solo developer, built mostly with Claude Code, so the code must be simple, typed and testable.
 - The platform must be able to scale if a game goes viral, without a rewrite.
@@ -192,7 +192,7 @@ The server owns all timers. The state carries an absolute `deadline` (epoch ms).
 - One shared `useRoom()` hook owns the socket connection, the token, reconnection and the latest `room:state`.
 - Each game provides a screen component that takes its `View` and sends actions. Screens are **lazy-loaded** per game.
 - State shown on screen comes from the server snapshot. Local state is only for UI details like which card is hovered.
-- Mobile-first: a single column, large tap targets, no hover-only interactions, tested on real iPhone and Android devices.
+- Mobile-first and responsive: design for a phone first, then adapt the layout for tablets and laptops. Large tap targets, no hover-only interactions, and keyboard and mouse work as well as touch. Tested on real iPhone and Android devices, plus a tablet-sized and a laptop browser.
 - Audio starts only after a first user tap (iOS Safari rule).
 - Phaser is imported only inside Love Kitchen's screen.
 
@@ -286,6 +286,7 @@ Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 2026-11-05 | Tests live in a `test/` folder beside `src/` | Builds only ever see `src/` |
 | 2026-11-05 | `.astro` files are not typechecked | `@astrojs/check` would be an extra dependency for a placeholder page. Revisit at milestone 5 |
 | 2026-11-05 | Platform UI is shared, game UI is shared only on real reuse | Games have different screens and themes, so building shared game UI up front would be guesswork. No `packages/ui`, because only `apps/web` would use it |
+| 2026-11-05 | Responsive across phones, tablets and laptops, still mobile-first | Long-distance couples may play on laptops, and the two players may use different devices |
 | 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
 
 ## 15. Open questions

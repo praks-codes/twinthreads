@@ -1,10 +1,10 @@
 # Milestone 1: Hello Room
 
-**Status:** draft, awaiting review. No code is written until this is approved.
+**Status:** approved, in progress.
 
 ## Goal
 
-Two phones share a room code, see each other live, and survive a refresh.
+Two phones share a room code, see each other live, and survive a refresh. The same must work on tablets and laptops, in any mix of devices.
 
 This is the room system every game will sit on. Nothing is playable yet.
 
@@ -23,14 +23,14 @@ This is the room system every game will sit on. Nothing is playable yet.
 
 ### Server (`apps/server`)
 
-- **Room codes:** six characters from the section 6.2 alphabet in `ARCHITECTURE.md`, from a cryptographically secure source, checked for collisions.
+- **Room codes:** see [Room codes](#room-codes).
 - **Events:** `room:create`, `room:join`, `room:leave`, `room:joined`, `room:state` and `room:error`.
 - **Validation:** a Zod schema for every incoming message. Unknown shapes are rejected.
 - **Identity:** the server issues `playerId` and a secret `playerToken`. A rejoin needs a token that matches that room.
 - **Snapshots:** `room:state` goes to both players on every change, and never contains a token.
 - **Reconnect:** a disconnect keeps the slot for `RECONNECT_GRACE_SECONDS`. After that the room pauses, and it resumes if the player returns before it expires. If the same player connects twice, the newest connection replaces the older one.
 - **Leave:** `room:leave` frees that player's slot and invalidates their token immediately. Unlike a dropped connection, there is no grace period. The room is deleted once no players remain.
-- **Expiry:** a room expires after `ROOM_IDLE_MINUTES` with no messages, and any connected players are told.
+- **Expiry:** see [Idle expiry](#idle-expiry).
 - **Shutdown:** on SIGTERM, connected players are notified before the server exits.
 - **Logs:** include `roomCode` and `playerId`, and never tokens.
 
@@ -60,6 +60,34 @@ Room logic stays in `apps/server` for this milestone, because it needs the clock
 ### Cleanup
 
 - Delete the empty `.prettierrc.json`.
+
+## Room codes
+
+Each of the six characters is picked independently with Node's `crypto.randomInt`, from the 31-character alphabet in `ARCHITECTURE.md` section 6.2. That gives about 887 million codes, and `randomInt` avoids the bias of taking a random byte modulo 31.
+
+Uniqueness comes from the room store: `create` refuses a code already in use, and the server retries with a new code up to 5 times, then returns an error. Letting `create` do the check is safer than looking the code up first, because two requests arriving together could both see a code as free. A code can be reused once its room is gone.
+
+The generator lives in `apps/server`, because the engine can't use Node features. Not used: `Math.random()` and the seeded `Rng` (both predictable), counters (guessable), and trimmed UUIDs or hashes (wrong alphabet, no benefit).
+
+## Idle expiry
+
+A room expires after `ROOM_IDLE_MINUTES` with no valid event from a player's device. Connected players are told, and return to the home screen.
+
+| Activity                                                                     | Keeps the room alive? |
+| ---------------------------------------------------------------------------- | --------------------- |
+| Successful `room:create`, `room:join` (including rejoining) and `room:leave` | Yes                   |
+| `game:action`, `room:ready`, `room:rematch` (later milestones)               | Yes                   |
+| Rejected messages (bad format, wrong token, over the rate limit)             | No                    |
+| Server to device: `room:state`, `room:error`                                 | No                    |
+| Socket.IO's automatic heartbeat                                              | No                    |
+| Game state changing because a timer ran out (from milestone 3)               | No                    |
+
+So two connected players who send nothing are expired, even in the middle of a pause. We can revisit the 30-minute default after real play at milestone 3.
+
+## Accepted side effects of leaving
+
+- Anyone with the code can take a free slot, not just the player who left.
+- The code only survives while someone is in the room. If the last player leaves, the room is deleted and a new one is needed.
 
 ## Limits
 
@@ -94,7 +122,8 @@ During local development every phone connects through the Vite proxy, so all of 
 
 Shared CSS variables for colour, font, spacing and corner radius, in one file in `apps/web`.
 
-- Mobile-first, single column, tap targets at least 44px, no hover-only interactions.
+- Mobile-first and responsive: a single column on phones, with the layout adapting for tablets and laptops.
+- Tap targets at least 44px, no hover-only interactions, and keyboard and mouse work as well as touch.
 - Follows the system light or dark setting.
 - System fonts and a neutral palette as placeholders. The real look is decided in milestone 2a.
 - No animation and no new styling dependency.
@@ -159,7 +188,7 @@ Small commits on `feat/hello-room`:
 
 Automated: lint, typecheck, tests and build pass in CI.
 
-On two real phones on the same Wi-Fi:
+On two devices on the same Wi-Fi, first two phones, then a phone and a laptop:
 
 - [ ] Create a room on one phone and join from the other
 - [ ] Both names appear on both screens without a refresh
