@@ -1,6 +1,6 @@
 # Milestone 2: Phase engine
 
-**Status:** draft, awaiting review. No code is written until this is approved.
+**Status:** approved. Built, awaiting testing on real devices.
 
 ## Goal
 
@@ -95,6 +95,8 @@ parseAction(input: unknown): Result<Action, GameError>;
 // 2. init gets the time, or a game's first phase can't have a deadline.
 init(ctx: { playerIds; rng; now: number; options?: unknown }): State;
 ```
+
+`room:state` also gets `gameId`, `result` and `rematchVotes`, so the platform can pick the game's screen and show results and rematch progress for every game.
 
 `room:error` also gets two new codes:
 

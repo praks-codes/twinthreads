@@ -1,5 +1,6 @@
 import { InMemoryRoomStore } from "@twinthreads/engine";
 import { buildApp } from "./app.js";
+import { createGameRegistry } from "./games.js";
 import { ConfigError, loadConfig, type Config } from "./config.js";
 
 function readConfig(): Config {
@@ -19,6 +20,7 @@ const now = () => Date.now();
 const store = new InMemoryRoomStore(now);
 const { app } = buildApp(config, {
   store,
+  games: createGameRegistry(config.NODE_ENV),
   countRooms: () => store.size,
   now,
 });

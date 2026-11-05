@@ -53,6 +53,7 @@ twinthreads/
     engine/           Room model, phase engine, shared types, RoomStore interface
     games/
       court/          Relationship Court: rules, cards, scoring (pure logic)
+      test-game/      Number Duel, which only tests the engine and never reaches production
       mystery/        Added later
   docs/               Game specs, decisions
   ARCHITECTURE.md
@@ -99,7 +100,10 @@ export interface GameDefinition<State, Action, View> {
   players: 2;
 
   // Create the starting state. Randomness comes from the supplied seeded rng.
-  init(ctx: { playerIds: [PlayerId, PlayerId]; rng: Rng; options?: unknown }): State;
+  init(ctx: { playerIds: [PlayerId, PlayerId]; rng: Rng; now: number; options?: unknown }): State;
+
+  // Check untrusted input from a client. Engine and game packages have no dependencies, so no Zod here.
+  parseAction(input: unknown): Result<Action, GameError>;
 
   // Pure function. Returns a new state or an error. No side effects, no Date.now(), no Math.random().
   reduce(state: State, action: Action, ctx: { playerId: PlayerId; now: number; rng: Rng }):
@@ -179,7 +183,7 @@ Server to client:
 | Event | Payload | Purpose |
 |---|---|---|
 | `room:joined` | `{ code, playerId, playerToken }` | Sent once, token stored in the browser |
-| `room:state` | `{ code, players, status, phase, game: View, serverTime, deadline }` | Full current state, sent on every change and on reconnect. `status` is `waiting`, `active`, `reconnecting`, `paused` or `partner_left`, decided by the server |
+| `room:state` | `{ code, gameId, players, status, phase, game: View, result, rematchVotes, serverTime, deadline }` | Full current state, sent on every change and on reconnect. `status` is `waiting`, `active`, `reconnecting`, `paused` or `partner_left`, decided by the server |
 | `room:error` | `{ code, message }` | Clear, user-safe errors |
 
 Design choice: send **full view snapshots**, not diffs. Messages are small in two-player turn-based games, and snapshots make reconnects trivial and bugs rarer. Real-time games (Love Kitchen) can add an event channel later.
@@ -291,6 +295,12 @@ Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 2026-11-05 | Explicit `room:leave` event | A deliberate leave differs from a dropped connection: the partner is told immediately and the slot is freed |
 | 2026-11-05 | Room logic in `apps/server` for now, with one operation at a time per room | It needs the clock and secure randomness, and the lock stops two players taking the last slot. A Redis `RoomStore` will need its own atomic check |
 | 2026-11-05 | Socket.IO ping every 10s with a 5s timeout | Notices a dropped phone in about 15 seconds instead of 45, so the partner sees it sooner |
+| 2026-11-05 | The platform owns `LOBBY`, `REMATCH` and showing results. Games own the round phases, and the engine rejects impossible phase changes | One lobby and rematch flow for every game, and a broken game fails loudly |
+| 2026-11-05 | Randomness comes from the game's seed plus a step counter | A running game is plain data, so it can be saved and replayed exactly |
+| 2026-11-05 | `room:state` is built separately for each player | Enforces the per-player view rule, because no shared broadcast exists to leak a secret |
+| 2026-11-05 | Games read time from a clock that stops during a pause | Nobody loses because a partner's phone died, and games need no pause code. Deadlines stay in game time, and the platform converts them for clients |
+| 2026-11-05 | Leaving mid-game ends the game | A two-player game can't continue with one, and nobody new should inherit a half-played game |
+| 2026-11-05 | Timers keep running during the reconnect grace period | Otherwise a player could stall by dropping their connection. Revisit when Court's timers are designed, because a refresh can cost a turn |
 | 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
 
 ## 15. Open questions

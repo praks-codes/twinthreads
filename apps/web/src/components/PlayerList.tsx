@@ -21,7 +21,11 @@ export function PlayerList({
             {player.playerId === myPlayerId ? " (you)" : ""}
           </span>
           <span className="player-list__status">
-            {player.connected ? "Connected" : "Offline"}
+            {!player.connected
+              ? "Offline"
+              : player.ready
+                ? "Ready"
+                : "Connected"}
           </span>
         </li>
       ))}

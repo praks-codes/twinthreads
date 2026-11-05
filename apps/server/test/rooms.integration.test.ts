@@ -1,6 +1,7 @@
 import type { AddressInfo } from "node:net";
 import {
   InMemoryRoomStore,
+  type AnyGame,
   type ClientToServerEvents,
   type RoomErrorPayload,
   type RoomJoinedPayload,
@@ -9,6 +10,7 @@ import {
 } from "@twinthreads/engine";
 import { io as connect, type Socket } from "socket.io-client";
 import { afterEach, describe, expect, it } from "vitest";
+import { createNumberDuel, TEST_GAME_ID } from "@twinthreads/test-game";
 import { buildApp } from "../src/app.js";
 
 type Client = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -29,7 +31,12 @@ async function startServer({ idleMinutes = 30, graceSeconds = 60 } = {}) {
       ROOM_IDLE_MINUTES: idleMinutes,
       RECONNECT_GRACE_SECONDS: graceSeconds,
     },
-    { store, countRooms: () => store.size, now: () => Date.now() },
+    {
+      store,
+      games: new Map([[TEST_GAME_ID, createNumberDuel() as AnyGame]]),
+      countRooms: () => store.size,
+      now: () => Date.now(),
+    },
   );
   await app.listen({ port: 0, host: "127.0.0.1" });
   let closed = false;
@@ -90,7 +97,7 @@ async function newClient(url: string): Promise<Client> {
 
 async function createRoom(client: Client, displayName = "Sam") {
   const joined = waitFor<RoomJoinedPayload>(client, "room:joined");
-  client.emit("room:create", { gameId: "court", displayName });
+  client.emit("room:create", { gameId: TEST_GAME_ID, displayName });
   return joined;
 }
 
@@ -233,7 +240,7 @@ describe("rejections", () => {
     const a = await newClient(url);
     await createRoom(a);
     const error = errorOf(a);
-    a.emit("room:create", { gameId: "court", displayName: "Sam" });
+    a.emit("room:create", { gameId: TEST_GAME_ID, displayName: "Sam" });
     expect((await error).code).toBe("ALREADY_IN_ROOM");
   });
 

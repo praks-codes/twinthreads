@@ -1,6 +1,12 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomInt, randomUUID } from "node:crypto";
 import {
+  applyAction,
+  applyTimeout,
   RoomExistsError,
+  startGame,
+  viewFor,
+  type AnyGame,
+  type GameSession,
   type PlayerId,
   type Result,
   type RoomErrorCode,
@@ -10,20 +16,42 @@ import {
   type RoomStatus,
   type RoomStore,
 } from "@twinthreads/engine";
+import type { GameRegistry } from "./games.js";
 import { generateRoomCode } from "./room-code.js";
 
 const MAX_CODE_ATTEMPTS = 5;
 const MAX_PLAYERS = 2;
+const MAX_SEED = 2 ** 32;
 
 type Timer = ReturnType<typeof setTimeout>;
 
+/**
+ * What's kept in RoomRecord.gameState while a game exists.
+ *
+ * Games read time from a clock that stops during a pause, so they need no pause
+ * code of their own: game time = real time - pausedMs.
+ */
+interface ActiveGame {
+  session: GameSession<unknown>;
+  pausedMs: number;
+  pausedAt: number | null;
+  rematchVotes: PlayerId[];
+}
+
+export interface RoomFailure {
+  code: RoomErrorCode;
+  message?: string;
+}
+
 export interface RoomServiceOptions {
   store: RoomStore;
+  games: GameRegistry;
   idleMs: number;
   graceMs: number;
   now: () => number;
   generateCode?: () => string;
   onGraceEnded: (code: string) => void | Promise<void>;
+  onGameChanged: (code: string) => void | Promise<void>;
   onExpired: (room: RoomRecord) => void | Promise<void>;
   onTimerError: (error: unknown) => void;
 }
@@ -32,6 +60,16 @@ export interface Membership {
   code: string;
   player: RoomPlayer;
 }
+
+const OK = { ok: true, value: undefined } as const;
+
+const failure = (
+  code: RoomErrorCode,
+  message?: string,
+): { ok: false; error: RoomFailure } => ({
+  ok: false,
+  error: message === undefined ? { code } : { code, message },
+});
 
 export function roomStatus(room: RoomRecord): RoomStatus {
   if (room.players.length < MAX_PLAYERS) {
@@ -44,16 +82,26 @@ export function roomStatus(room: RoomRecord): RoomStatus {
     : "reconnecting";
 }
 
-/** Room lifecycle, with no knowledge of sockets. */
+const activeGame = (room: RoomRecord) => room.gameState as ActiveGame | null;
+
+const gameClock = (active: ActiveGame, now: number) =>
+  (active.pausedAt ?? now) - active.pausedMs;
+
+/** Room and game lifecycle, with no knowledge of sockets. */
 export class RoomService {
   readonly #locks = new Map<string, Promise<unknown>>();
   readonly #idleTimers = new Map<string, Timer>();
   readonly #graceTimers = new Map<PlayerId, Timer>();
+  readonly #gameTimers = new Map<string, Timer>();
   #disposed = false;
 
   constructor(private readonly options: RoomServiceOptions) {}
 
-  async create(displayName: string): Promise<Membership> {
+  hasGame(gameId: string): boolean {
+    return this.options.games.has(gameId);
+  }
+
+  async create(gameId: string, displayName: string): Promise<Membership> {
     const generate = this.options.generateCode ?? generateRoomCode;
     const player = newPlayer(displayName);
 
@@ -62,7 +110,7 @@ export class RoomService {
       try {
         await this.options.store.create({
           code,
-          gameId: "court",
+          gameId,
           players: [player],
           phase: "LOBBY",
           gameState: null,
@@ -100,6 +148,8 @@ export class RoomService {
           players: replacePlayer(room.players, player),
         });
         await this.#touch(code);
+        await this.#resumeIfPossible(code);
+        await this.#startIfReady(code);
         return { ok: true, value: { code, player } };
       }
 
@@ -116,7 +166,10 @@ export class RoomService {
     });
   }
 
-  /** Frees the player's slot. Deletes the room if nobody remains. */
+  /**
+   * Frees the player's slot and ends any game, because a two-player game can't
+   * continue with one. Deletes the room if nobody remains.
+   */
   leave(code: string, playerId: PlayerId): Promise<void> {
     return this.#withLock(code, async () => {
       const { store } = this.options;
@@ -124,13 +177,19 @@ export class RoomService {
       if (!room) return;
 
       this.#clearGraceTimer(playerId);
+      this.#clearGameTimer(code);
       const players = room.players.filter((p) => p.playerId !== playerId);
       if (players.length === 0) {
         await store.delete(code);
         this.#clearIdleTimer(code);
         return;
       }
-      await store.update(code, { players, partnerLeft: true });
+      await store.update(code, {
+        players: players.map((player) => ({ ...player, ready: false })),
+        partnerLeft: true,
+        phase: "LOBBY",
+        gameState: null,
+      });
       await this.#touch(code);
     });
   }
@@ -150,11 +209,97 @@ export class RoomService {
     });
   }
 
-  async snapshot(code: string): Promise<RoomStatePayload | null> {
+  setReady(
+    code: string,
+    playerId: PlayerId,
+    ready: boolean,
+  ): Promise<Result<void, RoomFailure>> {
+    return this.#withLock(code, async () => {
+      const { store } = this.options;
+      const room = await store.get(code);
+      const player = room?.players.find((p) => p.playerId === playerId);
+      if (!room || !player) return failure("NOT_FOUND");
+      if (room.phase !== "LOBBY") {
+        return failure("GAME_ERROR", "The game has already started.");
+      }
+      await store.update(code, {
+        players: replacePlayer(room.players, { ...player, ready }),
+      });
+      await this.#touch(code);
+      await this.#startIfReady(code);
+      return OK;
+    });
+  }
+
+  gameAction(
+    code: string,
+    playerId: PlayerId,
+    input: unknown,
+  ): Promise<Result<void, RoomFailure>> {
+    return this.#withLock(code, async () => {
+      const room = await this.options.store.get(code);
+      if (!room) return failure("NOT_FOUND");
+      const active = activeGame(room);
+      if (!active) return failure("GAME_ERROR", "No game is running.");
+      if (roomStatus(room) === "paused") return failure("ROOM_PAUSED");
+
+      const game = this.#game(room);
+      const result = applyAction(
+        game,
+        active.session,
+        playerId,
+        input,
+        gameClock(active, this.options.now()),
+      );
+      if (!result.ok) return failure("GAME_ERROR", result.error.message);
+
+      await this.#saveGame(room, game, { ...active, session: result.value });
+      await this.#touch(code);
+      return OK;
+    });
+  }
+
+  /** Both players voting starts a new game with new randomness. */
+  rematch(
+    code: string,
+    playerId: PlayerId,
+  ): Promise<Result<void, RoomFailure>> {
+    return this.#withLock(code, async () => {
+      const { store } = this.options;
+      const room = await store.get(code);
+      if (!room) return failure("NOT_FOUND");
+      const active = activeGame(room);
+      if (!active || (room.phase !== "RESULTS" && room.phase !== "REMATCH")) {
+        return failure("GAME_ERROR", "The game hasn't finished yet.");
+      }
+      await store.update(code, {
+        phase: "REMATCH",
+        gameState: {
+          ...active,
+          rematchVotes: [...new Set([...active.rematchVotes, playerId])],
+        } satisfies ActiveGame,
+      });
+      await this.#touch(code);
+      await this.#startIfReady(code);
+      return OK;
+    });
+  }
+
+  /** Built per player, because this is the only data that player may see. */
+  async snapshot(
+    code: string,
+    playerId: PlayerId,
+  ): Promise<RoomStatePayload | null> {
     const room = await this.options.store.get(code);
     if (!room) return null;
+    const active = activeGame(room);
+    const game = active ? this.#game(room) : null;
+    const deadline =
+      active && game ? game.deadline(active.session.state) : null;
+
     return {
       code: room.code,
+      gameId: room.gameId,
       // Listed field by field, so a new secret on RoomPlayer can't leak by default.
       players: room.players.map((player) => ({
         playerId: player.playerId,
@@ -164,19 +309,159 @@ export class RoomService {
       })),
       status: roomStatus(room),
       phase: room.phase,
-      game: null,
+      game: active && game ? viewFor(game, active.session, playerId) : null,
+      result:
+        active && game?.isFinished(active.session.state)
+          ? game.result(active.session.state)
+          : null,
+      rematchVotes: active?.rematchVotes ?? [],
       serverTime: this.options.now(),
-      deadline: null,
+      // Converted from game time to real time. No countdown while paused.
+      deadline:
+        active && deadline !== null && active.pausedAt === null
+          ? deadline + active.pausedMs
+          : null,
     };
   }
 
   /** Stops all timers, so nothing fires during shutdown. */
   dispose(): void {
     this.#disposed = true;
-    for (const timer of this.#idleTimers.values()) clearTimeout(timer);
-    for (const timer of this.#graceTimers.values()) clearTimeout(timer);
-    this.#idleTimers.clear();
-    this.#graceTimers.clear();
+    for (const timers of [
+      this.#idleTimers,
+      this.#graceTimers,
+      this.#gameTimers,
+    ]) {
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    }
+  }
+
+  #game(room: RoomRecord): AnyGame {
+    const game = this.options.games.get(room.gameId);
+    if (!game) throw new Error(`Game is not registered: ${room.gameId}`);
+    return game;
+  }
+
+  async #startIfReady(code: string): Promise<void> {
+    const { store, now } = this.options;
+    const room = await store.get(code);
+    if (!room || room.players.length !== MAX_PLAYERS) return;
+    if (room.players.some((player) => !player.connected)) return;
+
+    const active = activeGame(room);
+    const canStart =
+      room.phase === "LOBBY"
+        ? room.players.every((player) => player.ready)
+        : room.phase === "REMATCH" &&
+          active?.rematchVotes.length === MAX_PLAYERS;
+    if (!canStart) return;
+
+    const [first, second] = room.players as [RoomPlayer, RoomPlayer];
+    const game = this.#game(room);
+    const session = startGame(game, {
+      playerIds: [first.playerId, second.playerId],
+      seed: randomInt(MAX_SEED),
+      now: now(),
+    });
+    await store.update(code, {
+      players: room.players.map((player) => ({ ...player, ready: false })),
+    });
+    const updated = await store.get(code);
+    if (!updated) return;
+    await this.#saveGame(updated, game, {
+      session,
+      pausedMs: 0,
+      pausedAt: null,
+      rematchVotes: [],
+    });
+  }
+
+  async #saveGame(
+    room: RoomRecord,
+    game: AnyGame,
+    active: ActiveGame,
+  ): Promise<void> {
+    await this.options.store.update(room.code, {
+      gameState: active,
+      phase: game.phase(active.session.state),
+    });
+    this.#scheduleGameTimer(room.code, game, active);
+  }
+
+  // Only reached when every player is back, or the room isn't paused any more.
+  async #resumeIfPossible(code: string): Promise<void> {
+    const room = await this.options.store.get(code);
+    if (!room) return;
+    const active = activeGame(room);
+    if (!active || active.pausedAt === null || roomStatus(room) === "paused") {
+      return;
+    }
+    await this.#saveGame(room, this.#game(room), {
+      ...active,
+      pausedMs: active.pausedMs + this.options.now() - active.pausedAt,
+      pausedAt: null,
+    });
+  }
+
+  async #pauseIfNeeded(code: string): Promise<void> {
+    const room = await this.options.store.get(code);
+    if (!room || roomStatus(room) !== "paused") return;
+    const active = activeGame(room);
+    if (!active || active.pausedAt !== null) return;
+
+    this.#clearGameTimer(code);
+    await this.options.store.update(code, {
+      gameState: { ...active, pausedAt: this.options.now() },
+    });
+  }
+
+  #scheduleGameTimer(code: string, game: AnyGame, active: ActiveGame): void {
+    this.#clearGameTimer(code);
+    if (this.#disposed || active.pausedAt !== null) return;
+    const deadline = game.deadline(active.session.state);
+    if (deadline === null) return;
+
+    const delay = deadline - gameClock(active, this.options.now());
+    const timer: Timer = setTimeout(
+      () => {
+        this.#onGameTimer(code, timer)
+          .then((changed) => {
+            if (changed) return this.options.onGameChanged(code);
+          })
+          .catch(this.options.onTimerError);
+      },
+      Math.max(delay, 1),
+    );
+    timer.unref();
+    this.#gameTimers.set(code, timer);
+  }
+
+  #onGameTimer(code: string, timer: Timer): Promise<boolean> {
+    return this.#withLock(code, async () => {
+      // An action while this was queued replaced the timer, so this one is stale.
+      if (this.#gameTimers.get(code) !== timer) return false;
+      this.#gameTimers.delete(code);
+
+      const room = await this.options.store.get(code);
+      if (!room) return false;
+      const active = activeGame(room);
+      if (!active || active.pausedAt !== null) return false;
+
+      const game = this.#game(room);
+      const session = applyTimeout(
+        game,
+        active.session,
+        gameClock(active, this.options.now()),
+      );
+      await this.#saveGame(room, game, { ...active, session });
+      return session !== active.session;
+    });
+  }
+
+  #clearGameTimer(code: string): void {
+    clearTimeout(this.#gameTimers.get(code));
+    this.#gameTimers.delete(code);
   }
 
   // One operation at a time per room, so two players can't both take the last slot.
@@ -223,6 +508,7 @@ export class RoomService {
       for (const player of room.players) {
         this.#clearGraceTimer(player.playerId);
       }
+      this.#clearGameTimer(code);
       await this.options.store.delete(code);
       await this.options.onExpired(room);
     });
@@ -258,6 +544,7 @@ export class RoomService {
       await this.options.store.update(code, {
         players: replacePlayer(room.players, { ...player, graceExpired: true }),
       });
+      await this.#pauseIfNeeded(code);
     });
     await this.options.onGraceEnded(code);
   }

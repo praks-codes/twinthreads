@@ -45,6 +45,23 @@
   font-size: 1.25rem;
 }
 
+.results {
+  display: grid;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.results__headline {
+  font-size: 1.75rem;
+}
+
+.results__scores {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+
 .confirm {
   display: grid;
   gap: var(--space-2);
@@ -81,6 +98,7 @@
     background: var(--color-surface);
   }
 
+  .page--room .ready,
   .page--room .leave {
     justify-self: center;
     width: 280px;

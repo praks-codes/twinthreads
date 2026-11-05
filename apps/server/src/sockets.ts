@@ -8,12 +8,16 @@ import type {
 } from "@twinthreads/engine";
 import type { FastifyBaseLogger } from "fastify";
 import type { DefaultEventsMap, Server, Socket } from "socket.io";
+import type { GameRegistry } from "./games.js";
 import { RateLimiter } from "./rate-limit.js";
 import { RoomService, type Membership } from "./rooms.js";
 import {
+  gameActionSchema,
   roomCreateSchema,
   roomJoinSchema,
   roomLeaveSchema,
+  roomReadySchema,
+  roomRematchSchema,
 } from "./schemas.js";
 
 const MESSAGES_PER_SECOND = 20;
@@ -30,6 +34,8 @@ const MESSAGES: Record<RoomErrorCode, string> = {
   ROOM_EXPIRED: "This room expired because nobody was active.",
   REPLACED: "This room was opened in another tab or window.",
   SHUTTING_DOWN: "The server is restarting. Please try again in a moment.",
+  GAME_ERROR: "That move isn't allowed right now.",
+  ROOM_PAUSED: "The game is paused until your partner comes back.",
   INTERNAL: "Something went wrong. Please try again.",
 };
 
@@ -53,6 +59,7 @@ type AppSocket = Socket<
 export interface RoomSocketOptions {
   io: AppServer;
   store: RoomStore;
+  games: GameRegistry;
   idleMs: number;
   graceMs: number;
   log: FastifyBaseLogger;
@@ -67,13 +74,18 @@ export function attachRoomSockets(options: RoomSocketOptions): () => void {
   const joinLimiter = new RateLimiter(JOINS_PER_MINUTE, 60_000, now);
   let shuttingDown = false;
 
-  const fail = (socket: AppSocket, code: RoomErrorCode) => {
-    socket.emit("room:error", { code, message: MESSAGES[code] });
+  const fail = (socket: AppSocket, code: RoomErrorCode, message?: string) => {
+    socket.emit("room:error", { code, message: message ?? MESSAGES[code] });
   };
 
+  // Each player gets their own snapshot. Never broadcast a room's state.
   const publish = async (code: string) => {
-    const state = await service.snapshot(code);
-    if (state) io.to(code).emit("room:state", state);
+    const room = await options.store.get(code);
+    for (const { playerId } of room?.players ?? []) {
+      const socket = connections.get(playerId);
+      const state = await service.snapshot(code, playerId);
+      if (socket && state) socket.emit("room:state", state);
+    }
   };
 
   const onExpired = (room: RoomRecord) => {
@@ -83,17 +95,18 @@ export function attachRoomSockets(options: RoomSocketOptions): () => void {
       if (!socket) continue;
       connections.delete(playerId);
       socket.data.binding = null;
-      void socket.leave(room.code);
       fail(socket, "ROOM_EXPIRED");
     }
   };
 
   const service = new RoomService({
     store: options.store,
+    games: options.games,
     idleMs: options.idleMs,
     graceMs: options.graceMs,
     now,
     onGraceEnded: publish,
+    onGameChanged: publish,
     onExpired,
     onTimerError: (err) => log.error({ err }, "room timer failed"),
   });
@@ -109,7 +122,6 @@ export function attachRoomSockets(options: RoomSocketOptions): () => void {
       previous.disconnect(true);
     }
     socket.data.binding = { code, playerId: player.playerId };
-    await socket.join(code);
     socket.emit("room:joined", {
       code,
       playerId: player.playerId,
@@ -145,7 +157,14 @@ export function attachRoomSockets(options: RoomSocketOptions): () => void {
         if (!parsed.success) return fail(socket, "INVALID");
         if (socket.data.binding) return fail(socket, "ALREADY_IN_ROOM");
 
-        const membership = await service.create(parsed.data.displayName);
+        if (!service.hasGame(parsed.data.gameId)) {
+          return fail(socket, "INVALID");
+        }
+
+        const membership = await service.create(
+          parsed.data.gameId,
+          parsed.data.displayName,
+        );
         log.info(
           { roomCode: membership.code, playerId: membership.player.playerId },
           "room created",
@@ -183,12 +202,61 @@ export function attachRoomSockets(options: RoomSocketOptions): () => void {
 
         socket.data.binding = null;
         connections.delete(binding.playerId);
-        await socket.leave(binding.code);
         await service.leave(binding.code, binding.playerId);
         log.info(
           { roomCode: binding.code, playerId: binding.playerId },
           "player left",
         );
+        await publish(binding.code);
+      });
+    });
+
+    socket.on("room:ready", (payload: unknown) => {
+      enqueue(async () => {
+        const parsed = roomReadySchema.safeParse(payload);
+        const binding = socket.data.binding;
+        if (!parsed.success || !binding) return fail(socket, "INVALID");
+
+        const result = await service.setReady(
+          binding.code,
+          binding.playerId,
+          parsed.data.ready,
+        );
+        if (!result.ok) {
+          return fail(socket, result.error.code, result.error.message);
+        }
+        await publish(binding.code);
+      });
+    });
+
+    socket.on("game:action", (payload: unknown) => {
+      enqueue(async () => {
+        const parsed = gameActionSchema.safeParse(payload);
+        const binding = socket.data.binding;
+        if (!parsed.success || !binding) return fail(socket, "INVALID");
+
+        const result = await service.gameAction(
+          binding.code,
+          binding.playerId,
+          parsed.data,
+        );
+        if (!result.ok) {
+          return fail(socket, result.error.code, result.error.message);
+        }
+        await publish(binding.code);
+      });
+    });
+
+    socket.on("room:rematch", (payload: unknown) => {
+      enqueue(async () => {
+        const binding = socket.data.binding;
+        if (!roomRematchSchema.safeParse(payload).success || !binding) {
+          return fail(socket, "INVALID");
+        }
+        const result = await service.rematch(binding.code, binding.playerId);
+        if (!result.ok) {
+          return fail(socket, result.error.code, result.error.message);
+        }
         await publish(binding.code);
       });
     });

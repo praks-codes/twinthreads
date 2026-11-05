@@ -12,6 +12,7 @@ describe("GET /health", () => {
     },
     {
       store: new InMemoryRoomStore(() => 0),
+      games: new Map(),
       countRooms: () => 3,
       now: () => 0,
     },

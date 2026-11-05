@@ -200,6 +200,9 @@ importers:
       '@twinthreads/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@twinthreads/test-game':
+        specifier: workspace:*
+        version: link:../../packages/games/test-game
       fastify:
         specifier: ^5.12.8
         version: 5.12.8
@@ -241,6 +244,9 @@ importers:
         specifier: ^4.8.4
         version: 4.8.4
     devDependencies:
+      '@twinthreads/test-game':
+        specifier: workspace:*
+        version: link:../../packages/games/test-game
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -260,6 +266,12 @@ importers:
   packages/engine: {}
 
   packages/games/court:
+    dependencies:
+      '@twinthreads/engine':
+        specifier: workspace:*
+        version: link:../../engine
+
+  packages/games/test-game:
     dependencies:
       '@twinthreads/engine':
         specifier: workspace:*

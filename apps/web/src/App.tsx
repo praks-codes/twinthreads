@@ -24,6 +24,9 @@ export function App() {
       code={room.session.code}
       myPlayerId={room.session.playerId}
       onLeave={room.leaveRoom}
+      onReady={room.setReady}
+      onAction={room.sendAction}
+      onRematch={room.rematch}
     />
   );
 }

@@ -38,8 +38,11 @@ export interface GameDefinition<State, Action, View> {
   init(ctx: {
     playerIds: [PlayerId, PlayerId];
     rng: Rng;
+    now: number;
     options?: unknown;
   }): State;
+  /** Checks untrusted input from a client. Engine and games can't use Zod. */
+  parseAction(input: unknown): Result<Action, GameError>;
   reduce(
     state: State,
     action: Action,
@@ -51,6 +54,17 @@ export interface GameDefinition<State, Action, View> {
   onTimeout(state: State, now: number, rng: Rng): State;
   isFinished(state: State): boolean;
   result(state: State): GameResult;
+}
+
+/** Any game, for code that handles games without knowing their types. */
+export type AnyGame = GameDefinition<unknown, unknown, unknown>;
+
+/** A running game. Plain data, so it can be saved and replayed. */
+export interface GameSession<State> {
+  gameId: string;
+  seed: number;
+  step: number;
+  state: State;
 }
 
 export interface RoomPlayer {
@@ -114,10 +128,14 @@ export type RoomStatus =
 /** `players` deliberately omits playerToken: tokens never go to the other player. */
 export interface RoomStatePayload<View = unknown> {
   code: string;
+  gameId: string;
   players: Omit<RoomPlayer, "playerToken" | "graceExpired">[];
   status: RoomStatus;
   phase: Phase;
   game: View;
+  /** Set once the game has finished. */
+  result: GameResult | null;
+  rematchVotes: PlayerId[];
   serverTime: number;
   deadline: number | null;
 }
@@ -131,6 +149,8 @@ export type RoomErrorCode =
   | "ROOM_EXPIRED"
   | "REPLACED"
   | "SHUTTING_DOWN"
+  | "GAME_ERROR"
+  | "ROOM_PAUSED"
   | "INTERNAL";
 
 export interface RoomErrorPayload {
