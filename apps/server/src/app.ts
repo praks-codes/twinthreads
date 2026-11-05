@@ -1,15 +1,35 @@
 import cors from "@fastify/cors";
 import type {
   ClientToServerEvents,
+  RoomStore,
   ServerToClientEvents,
 } from "@twinthreads/engine";
 import Fastify from "fastify";
 import { Server } from "socket.io";
 import type { Config } from "./config.js";
+import { attachRoomSockets } from "./sockets.js";
+
+const MAX_MESSAGE_BYTES = 16 * 1024;
+
+// Notices a dropped phone in about 15 seconds, instead of the default 45.
+const PING_INTERVAL_MS = 10_000;
+const PING_TIMEOUT_MS = 5_000;
+
+export interface AppDependencies {
+  store: RoomStore;
+  countRooms: () => number;
+  now: () => number;
+}
 
 export function buildApp(
-  config: Pick<Config, "CLIENT_ORIGIN" | "LOG_LEVEL">,
-  countRooms: () => number,
+  config: Pick<
+    Config,
+    | "CLIENT_ORIGIN"
+    | "LOG_LEVEL"
+    | "ROOM_IDLE_MINUTES"
+    | "RECONNECT_GRACE_SECONDS"
+  >,
+  { store, countRooms, now }: AppDependencies,
 ) {
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
 
@@ -25,11 +45,23 @@ export function buildApp(
     app.server,
     {
       cors: { origin: config.CLIENT_ORIGIN },
+      maxHttpBufferSize: MAX_MESSAGE_BYTES,
+      pingInterval: PING_INTERVAL_MS,
+      pingTimeout: PING_TIMEOUT_MS,
     },
   );
 
+  const shutdownRooms = attachRoomSockets({
+    io,
+    store,
+    idleMs: config.ROOM_IDLE_MINUTES * 60_000,
+    graceMs: config.RECONNECT_GRACE_SECONDS * 1000,
+    log: app.log,
+    now,
+  });
+
   app.addHook("preClose", async () => {
-    io.disconnectSockets(true);
+    shutdownRooms();
   });
 
   return { app, io };
