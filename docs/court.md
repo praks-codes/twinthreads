@@ -27,7 +27,7 @@ Cross-examination always happens. A player can rest their case on a reply turn, 
 ## Rules from the first test
 
 - **Judge:** both partners must agree before the game starts, and either changing their mind clears the other's approval. If time runs out on a disagreement, the Court picks one partner's choice and says so.
-- **Objections:** only the side that didn't just speak can object, so a player can object to what the other side just said. After a ruling the game moves to the next step, so each statement can only be objected to once.
+- **Objections:** only the side that didn't just speak can object, so a player can object to what the other side just said. An objection is the objector speaking, so it uses their next turn if it's up, and the turn then passes to their partner. The button warns about this first. After a ruling the game moves to the next step, so each statement can only be objected to once.
 - **Court record:** both players can always read everything said so far, across all cases. Lawyer suggestions stay private until used.
 - **Wax seal:** the verdict, score, moods and meter stay hidden until the seal breaks.
 

@@ -558,6 +558,56 @@ describe("the verdict", () => {
   });
 });
 
+describe("an objection and turns", () => {
+  function objectAtHearing() {
+    let session = act(settle(toHearing()), A, "object");
+    session = act(session, A, "argue", { ground: 0, argument: "Not true." });
+    return settle(session, { line: "Hm.", sustained: true });
+  }
+
+  it("uses the objector's next turn, so the other player answers", () => {
+    let session = objectAtHearing();
+    expect(session.state.turn).toBe(4);
+    expect(viewFor(game, session, A).turnsLeft).toEqual({ [A]: 0, [B]: 2 });
+    session = bothContinue(session);
+    expect(session.state.stage).toBe("reply");
+    expect(viewFor(game, session, A).mover).toBe(B);
+    expect(viewFor(game, session, B).lastSpeech?.text).toBe("Not true.");
+  });
+
+  it("warns the objector first, only if it will cost them a turn", () => {
+    const hearing = settle(toHearing());
+    expect(viewFor(game, hearing, A).objectionUsesTurn).toBe(true);
+
+    let later = bothContinue(hearing);
+    later = act(later, A, "rest");
+    later = settle(act(later, B, "reply", { text: "No." }));
+    // The prosecutor has no turns left, so objecting costs nothing.
+    expect(viewFor(game, later, A).canObject).toBe(true);
+    expect(viewFor(game, later, A).objectionUsesTurn).toBe(false);
+    const turn = later.state.turn;
+    later = act(later, A, "object");
+    later = act(later, A, "argue", { ground: 0, argument: "Not true." });
+    expect(later.state.turn).toBe(turn);
+  });
+
+  it("uses the turn even if the objector runs out of time arguing", () => {
+    let session = act(settle(toHearing()), A, "object");
+    session = applyTimeout(game, session, session.state.deadline ?? 0);
+    expect(session.state.turn).toBe(4);
+  });
+
+  it("uses the defendant's turn when they object to a reply", () => {
+    let session = bothContinue(settle(toHearing()));
+    session = settle(act(session, A, "reply", { text: "You did." }));
+    session = act(session, B, "object");
+    session = act(session, B, "argue", { ground: 0, argument: "I did not." });
+    session = bothContinue(settle(session));
+    expect(session.state.stage).toBe("crossExam");
+    expect(session.state.turn).toBe(5);
+  });
+});
+
 describe("players tapping at the same moment", () => {
   it("ignores a second tap on the seal", () => {
     const sealed = settle(toDeliberating(), {

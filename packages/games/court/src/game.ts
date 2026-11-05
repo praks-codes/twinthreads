@@ -224,6 +224,7 @@ export interface CourtView {
   scores: Record<PlayerId, number>;
   myObjections: number;
   canObject: boolean;
+  objectionUsesTurn: boolean;
   canContinue: boolean;
   haveContinued: boolean;
   /** 0 to 100, and above 50 favours playerIds[0]. */
@@ -363,6 +364,11 @@ function turnPlayer(state: CourtState, turn: number): PlayerId | null {
   const role = TURN_ROLES[turn - 1];
   if (!role) return null;
   return role === "prosecutor" ? prosecutorOf(state) : defendantOf(state);
+}
+
+/** An objection is the objector speaking, so it uses their next turn if it's up. */
+function turnAfterObjection(state: CourtState, by: PlayerId): number {
+  return turnPlayer(state, state.turn) === by ? state.turn + 1 : state.turn;
 }
 
 function turnsLeftFor(state: CourtState, playerId: PlayerId): number {
@@ -1250,6 +1256,8 @@ export function createCourt(
                     updated.argument,
                   ),
                   objection: updated,
+                  turn: turnAfterObjection(state, playerId),
+                  lastSpeech: { by: playerId, text: updated.argument },
                 },
                 "ruling",
                 null,
@@ -1322,6 +1330,9 @@ export function createCourt(
         scores: state.scores,
         myObjections: state.objectionsLeft[playerId] ?? 0,
         canObject: canObject(state, playerId),
+        objectionUsesTurn:
+          canObject(state, playerId) &&
+          turnPlayer(state, state.turn) === playerId,
         canContinue:
           CONTINUE_STAGES.includes(state.stage) &&
           state.deadline !== null &&
@@ -1402,6 +1413,7 @@ export function createCourt(
           return toStage(
             {
               ...note(state, "judge", "Overruled", FALLBACK.overruled),
+              turn: turnAfterObjection(state, objection.by),
               meter: bumpMeter(
                 state,
                 objection.by === prosecutorOf(state)

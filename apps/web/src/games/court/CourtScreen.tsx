@@ -549,13 +549,18 @@ function ObjectButton({
 }) {
   if (!game.canObject) return null;
   return (
-    <button
-      type="button"
-      className="court-red"
-      onClick={() => onAction("object", {})}
-    >
-      OBJECTION! ({game.myObjections} left)
-    </button>
+    <>
+      <button
+        type="button"
+        className="court-red"
+        onClick={() => onAction("object", {})}
+      >
+        OBJECTION! ({game.myObjections} left)
+      </button>
+      {game.objectionUsesTurn && (
+        <p className="court-note">Objecting uses your next turn.</p>
+      )}
+    </>
   );
 }
 
