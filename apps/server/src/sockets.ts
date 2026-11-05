@@ -1,5 +1,6 @@
 import type {
   ClientToServerEvents,
+  GameEffect,
   PlayerId,
   RoomErrorCode,
   RoomRecord,
@@ -64,6 +65,7 @@ export interface RoomSocketOptions {
   graceMs: number;
   log: FastifyBaseLogger;
   now: () => number;
+  runEffect?: (gameId: string, effect: GameEffect) => Promise<unknown>;
 }
 
 /** Wires Socket.IO events to the room service. Returns the shutdown function. */
@@ -109,6 +111,7 @@ export function attachRoomSockets(options: RoomSocketOptions): () => void {
     onGameChanged: publish,
     onExpired,
     onTimerError: (err) => log.error({ err }, "room timer failed"),
+    ...(options.runEffect ? { runEffect: options.runEffect } : {}),
   });
 
   /** Attaches the socket to the player. The newest connection replaces an older one. */

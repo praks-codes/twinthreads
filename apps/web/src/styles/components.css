@@ -84,6 +84,15 @@
   overflow-wrap: anywhere;
 }
 
+.player-list__item--ready {
+  border: 2px solid var(--color-ready);
+}
+
+.player-list__item--ready .player-list__status {
+  color: var(--color-ready);
+  font-weight: 700;
+}
+
 .player-list__item--empty {
   border-style: dashed;
   background: transparent;

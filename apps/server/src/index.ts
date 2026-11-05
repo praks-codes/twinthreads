@@ -1,4 +1,6 @@
 import { InMemoryRoomStore } from "@twinthreads/engine";
+import { createEffectRunner } from "./ai/effects.js";
+import { createAiProvider } from "./ai/provider.js";
 import { buildApp } from "./app.js";
 import { createGameRegistry } from "./games.js";
 import { ConfigError, loadConfig, type Config } from "./config.js";
@@ -22,6 +24,14 @@ const { app } = buildApp(config, {
   store,
   games: createGameRegistry(config.NODE_ENV),
   countRooms: () => store.size,
+  now,
+  // Named so it can use the app's logger, which only exists once this returns.
+  runEffect: (gameId, effect) => runner(gameId, effect),
+});
+const runner = createEffectRunner({
+  provider: createAiProvider(config),
+  timeoutMs: config.AI_TIMEOUT_SECONDS * 1000,
+  log: app.log,
   now,
 });
 

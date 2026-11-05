@@ -34,6 +34,7 @@ Architecture consequence: only Our Little Monster needs persistence. Everything 
 | Animation | CSS first, Framer Motion at polish time | Added in milestone 4, not before. |
 | Real-time games | Phaser, loaded only inside Love Kitchen | Lazy-loaded so other games never download it. |
 | SEO pages | Astro (static site) | Landing page and one page per game. |
+| AI | Any model behind one small provider interface | Ollama locally, or any OpenAI-compatible service. Chosen by environment variable, with no SDK dependency. |
 | Testing | Vitest | Game logic is tested without a browser or server. |
 | Lint and format | ESLint + Prettier | Enforced in CI. |
 | Containers | Docker | Same server image on any host. |
@@ -47,12 +48,12 @@ Not used: Three.js (no 3D needed), Next.js, a database (until Our Little Monster
 twinthreads/
   apps/
     web/              React client (lobby, room, game screens)
-    server/           Fastify + Socket.IO room server
+    server/           Fastify + Socket.IO room server, and AI prompts and providers
     site/             Astro static site (landing + per-game SEO pages)
   packages/
     engine/           Room model, phase engine, shared types, RoomStore interface
     games/
-      court/          Relationship Court: rules, cards, scoring (pure logic)
+      court/          Relationship Court: rules, ready-made text, scoring (pure logic)
       test-game/      Number Duel, which only tests the engine and never reaches production
       mystery/        Added later
   docs/               Game specs, decisions
@@ -88,7 +89,7 @@ apps/server┘
 LOBBY → PRIVATE_INPUT → REVEAL → SCORE → NEXT_ROUND → … → RESULTS → REMATCH
 ```
 
-Games can use the phases they need and skip the rest. Court, for example, uses PRIVATE_INPUT (card choice), REVEAL, SCORE and NEXT_ROUND (role swap).
+Games can use the phases they need and skip the rest. Court, for example, runs its turns and objections in PRIVATE_INPUT, the verdict in REVEAL, the punishment in SCORE, and the case card and role swap in NEXT_ROUND.
 
 ### 5.3 Game plug-in interface
 
@@ -118,6 +119,11 @@ export interface GameDefinition<State, Action, View> {
   onTimeout(state: State, now: number, rng: Rng): State;
   isFinished(state: State): boolean;
   result(state: State): GameResult;        // scores, winner, shareable summary
+
+  // Optional. Work the game needs done outside its pure logic, such as asking an AI.
+  pendingEffects?(state: State): GameEffect[];
+  // Output is untrusted, and null means the work failed. A game must never get stuck.
+  applyEffect?(state: State, effect: { id: string; output: unknown }, ctx: { now: number; rng: Rng }): State;
 }
 ```
 
@@ -126,11 +132,11 @@ Rules for implementers:
 1. `reduce`, `view` and `onTimeout` are pure functions. They are fully unit-tested.
 2. All randomness goes through the injected seeded `rng`, so tests and replays are deterministic.
 3. All time goes through the `now` argument.
-4. A game never sends or receives anything itself. The platform does that.
+4. A game never sends or receives anything itself. The platform does that, including running its effects outside the room lock.
 
 ### 5.4 Per-player views (security rule)
 
-The server never sends raw game state to a client. It sends only `view(state, playerId)`. This protects secret clues in Couple's Mystery, hidden defense cards in Court, and incomplete information in Trust Fall. If a secret is in the payload, assume the other player can read it.
+The server never sends raw game state to a client. It sends only `view(state, playerId)`. This protects secret clues in Couple's Mystery, private lawyer suggestions and sealed verdicts in Court, and incomplete information in Trust Fall. If a secret is in the payload, assume the other player can read it.
 
 ## 6. Server architecture
 
@@ -302,11 +308,18 @@ Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 2026-11-05 | Leaving mid-game ends the game | A two-player game can't continue with one, and nobody new should inherit a half-played game |
 | 2026-11-05 | Timers keep running during the reconnect grace period | Otherwise a player could stall by dropping their connection. Revisit when Court's timers are designed, because a refresh can cost a turn |
 | 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
+| 2026-11-05 | Games request outside work through `pendingEffects` and `applyEffect` | The server runs an AI request outside the room lock, then passes the result in as data. Game logic stays pure, a late result is ignored, and a failed one becomes null, which every game must handle |
+| 2026-11-05 | AI providers sit behind one small interface, chosen by environment variable | Ollama for local testing, and any OpenAI-compatible service, with no new dependency. Another provider needs one function |
+| 2026-11-05 | Court runs as stages inside the existing phases | Hearing, objections and cross-examination all sit in `PRIVATE_INPUT`, so the phase rules didn't change. The view controls what each player sees |
+| 2026-11-05 | Every AI request includes the whole current case and the score, up to 8,000 characters | The judge must answer from everything said in the case. Earlier cases are left out, because players swap roles and a small model mixed them up. Ollama's context window is raised so nothing is cut off silently |
+| 2026-11-05 | A Court case has at most 5 turns, always including cross-examination | Long enough to feel like an argument, but a case can't run on, and a fixed count lets both players see how many turns are left |
+| 2026-11-05 | The case meter decides clear cases, and the AI decides close ones | Small models are unreliable, so one odd reply can't overturn a case that's already clear |
+| 2026-11-05 | Court checks for serious topics itself as well as asking the AI | Real harm must never be ruled on as a joke, even when the AI is down |
 | 2026-11-05 | An AI judges Court, and players never judge | Players write their own accusations and defenses, so a fixed scoring rule can't rate them, and two partners can't fairly judge their own case |
 
 ## 15. Open questions
 
-- Which AI model Court uses and where it runs, and how its answers enter pure game logic (milestone 3 spec).
+- Which AI model and host Court uses once public, and what it costs per game.
 - Should Secret Missions be its own Love Quest theme pack or a bonus mode over any theme?
 - Launch timeline and whether early monetization is planned.
 - Final hosting provider (milestone 5).

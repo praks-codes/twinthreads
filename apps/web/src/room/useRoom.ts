@@ -18,8 +18,7 @@ type RoomSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 const RECONNECT_DELAY_MS = 2000;
 const REJOIN_RETRY_MS = 5000;
 
-// Court isn't playable until milestone 3, so development uses the test game.
-const GAME_ID = import.meta.env.DEV ? "test-game" : "court";
+const GAME_ID = "court";
 
 // In development the Vite dev server proxies to the server, so any device works.
 const SERVER_URL = import.meta.env.DEV

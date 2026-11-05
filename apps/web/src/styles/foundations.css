@@ -13,6 +13,7 @@
   --color-primary: #3a3a8c;
   --color-on-primary: #ffffff;
   --color-danger: #a32020;
+  --color-ready: #15803d;
   --color-notice-bg: #ececf1;
 
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -38,6 +39,7 @@
     --color-primary: #a9a9f5;
     --color-on-primary: #15151a;
     --color-danger: #ff9c9c;
+    --color-ready: #4ade80;
     --color-notice-bg: #2c2c35;
   }
 }

@@ -32,6 +32,16 @@ export interface GameResult {
   summary: string;
 }
 
+/**
+ * Work a game needs done outside its pure logic, such as asking an AI. The server
+ * runs it and hands the output back through applyEffect.
+ */
+export interface GameEffect {
+  id: string;
+  kind: string;
+  input: unknown;
+}
+
 export interface GameDefinition<State, Action, View> {
   id: string;
   players: 2;
@@ -54,6 +64,14 @@ export interface GameDefinition<State, Action, View> {
   onTimeout(state: State, now: number, rng: Rng): State;
   isFinished(state: State): boolean;
   result(state: State): GameResult;
+  /** Effects waiting for a result. Games without any leave this out. */
+  pendingEffects?(state: State): GameEffect[];
+  /** Output is untrusted, and null means the effect failed. Must never get stuck. */
+  applyEffect?(
+    state: State,
+    effect: { id: string; output: unknown },
+    ctx: { now: number; rng: Rng },
+  ): State;
 }
 
 /** Any game, for code that handles games without knowing their types. */

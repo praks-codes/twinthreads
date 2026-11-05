@@ -1,11 +1,14 @@
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
 import {
   applyAction,
+  applyEffectResult,
   applyTimeout,
+  pendingEffects,
   RoomExistsError,
   startGame,
   viewFor,
   type AnyGame,
+  type GameEffect,
   type GameSession,
   type PlayerId,
   type Result,
@@ -54,6 +57,8 @@ export interface RoomServiceOptions {
   onGameChanged: (code: string) => void | Promise<void>;
   onExpired: (room: RoomRecord) => void | Promise<void>;
   onTimerError: (error: unknown) => void;
+  /** Runs a game's effect, such as an AI request. Null output means it failed. */
+  runEffect?: (gameId: string, effect: GameEffect) => Promise<unknown>;
 }
 
 export interface Membership {
@@ -93,6 +98,7 @@ export class RoomService {
   readonly #idleTimers = new Map<string, Timer>();
   readonly #graceTimers = new Map<PlayerId, Timer>();
   readonly #gameTimers = new Map<string, Timer>();
+  readonly #runningEffects = new Set<string>();
   #disposed = false;
 
   constructor(private readonly options: RoomServiceOptions) {}
@@ -387,6 +393,53 @@ export class RoomService {
       phase: game.phase(active.session.state),
     });
     this.#scheduleGameTimer(room.code, game, active);
+    this.#startEffects(room.code, game, active);
+  }
+
+  // Runs outside the room lock, because a slow AI must not block the room.
+  #startEffects(code: string, game: AnyGame, active: ActiveGame): void {
+    const { seed } = active.session;
+    for (const effect of pendingEffects(game, active.session)) {
+      const key = `${code}:${seed}:${effect.id}`;
+      if (this.#disposed || this.#runningEffects.has(key)) continue;
+      this.#runningEffects.add(key);
+
+      const run = this.options.runEffect ?? (() => Promise.resolve(null));
+      run(game.id, effect)
+        .catch(() => null)
+        .then((output) => this.#finishEffect(code, seed, effect.id, output))
+        .then((changed) => {
+          if (changed) return this.options.onGameChanged(code);
+        })
+        .catch(this.options.onTimerError)
+        .finally(() => this.#runningEffects.delete(key));
+    }
+  }
+
+  #finishEffect(
+    code: string,
+    seed: number,
+    id: string,
+    output: unknown,
+  ): Promise<boolean> {
+    return this.#withLock(code, async () => {
+      if (this.#disposed) return false;
+      const room = await this.options.store.get(code);
+      const active = room && activeGame(room);
+      // A rematch or a leave while this ran means the result belongs to an old game.
+      if (!room || !active || active.session.seed !== seed) return false;
+
+      const game = this.#game(room);
+      const session = applyEffectResult(
+        game,
+        active.session,
+        { id, output },
+        gameClock(active, this.options.now()),
+      );
+      if (session === active.session) return false;
+      await this.#saveGame(room, game, { ...active, session });
+      return true;
+    });
   }
 
   // Only reached when every player is back, or the room isn't paused any more.
