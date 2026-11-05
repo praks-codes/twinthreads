@@ -1,0 +1,14 @@
+{
+  "name": "@twinthreads/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "astro": "^7.4.5"
+  }
+}

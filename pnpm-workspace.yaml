@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+  - packages/games/*
+
+injectWorkspacePackages: true
+
+# esbuild ships its binary as an optional dependency, so its script is not needed.
+allowBuilds:
+  esbuild: false

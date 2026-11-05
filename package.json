@@ -1,0 +1,27 @@
+{
+  "name": "twinthreads",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=26 <27"
+  },
+  "scripts": {
+    "dev": "pnpm --recursive --parallel --stream run dev",
+    "build": "pnpm --recursive run build",
+    "lint": "eslint . && node scripts/check-dependency-direction.mjs",
+    "typecheck": "pnpm --recursive run typecheck",
+    "test": "vitest run",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  }
+}
