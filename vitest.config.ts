@@ -9,6 +9,9 @@ export default defineConfig({
     alias: {
       "@twinthreads/engine": source("./packages/engine/src/index.ts"),
       "@twinthreads/court": source("./packages/games/court/src/index.ts"),
+      "@twinthreads/test-game": source(
+        "./packages/games/test-game/src/index.ts",
+      ),
     },
   },
   test: {
