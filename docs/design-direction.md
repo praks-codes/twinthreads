@@ -1,6 +1,6 @@
 # Milestone 2a: Design direction
 
-**Status:** in review. The main features and theme are chosen, and some [decisions](#open-decisions) are still open.
+**Status:** agreed well enough to build. Built as [Court](court.md), and some [decisions](#open-decisions) are still open.
 
 ## Goal
 
@@ -107,7 +107,7 @@ Designed for phones first.
 
 | #   | Question                                                                       | Recommendation                                                                        |
 | --- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| 1   | Where does the AI run?                                                         | Hosted small model, easy to swap. Needs approval and an account                       |
+| 1   | Where does the AI run once hosted?                                             | Hosted small model, easy to swap. Needs approval and an account                       |
 | 2   | Who is the judge?                                                              | Judge Cupid, a burned-out cherub in a wig, is a placeholder                           |
 | 3   | Who sets the judge personality and cross-examination?                          | Either player, and both see the choice before tapping Ready                           |
 | 4   | Does a pardon change the score?                                                | No. It only cancels the punishment                                                    |

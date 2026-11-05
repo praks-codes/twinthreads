@@ -302,11 +302,16 @@ Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 2026-11-05 | Leaving mid-game ends the game | A two-player game can't continue with one, and nobody new should inherit a half-played game |
 | 2026-11-05 | Timers keep running during the reconnect grace period | Otherwise a player could stall by dropping their connection. Revisit when Court's timers are designed, because a refresh can cost a turn |
 | 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
+| 2026-11-05 | Games request outside work through `pendingEffects` and `applyEffect` | The server runs an AI request outside the room lock, then passes the result in as data. Game logic stays pure, a late result is ignored, and a failed one becomes null, which every game must handle |
+| 2026-11-05 | AI providers sit behind one small interface, chosen by environment variable | Ollama for local testing, and any OpenAI-compatible service, with no new dependency. Another provider needs one function |
+| 2026-11-05 | Court runs as stages inside the existing phases | Hearing, moves and objections all sit in `PRIVATE_INPUT`, so the phase rules didn't change. The view controls what each player sees |
+| 2026-11-05 | The case meter decides clear cases, and the AI decides close ones | Small models are unreliable, so players' scoring and taps can't be overturned by one odd reply |
+| 2026-11-05 | Court checks for serious topics itself as well as asking the AI | Real harm must never be ruled on as a joke, even when the AI is down |
 | 2026-11-05 | An AI judges Court, and players never judge | Players write their own accusations and defenses, so a fixed scoring rule can't rate them, and two partners can't fairly judge their own case |
 
 ## 15. Open questions
 
-- Which AI model Court uses and where it runs, and how its answers enter pure game logic (milestone 3 spec).
+- Which AI model and host Court uses once public, and what it costs per game.
 - Should Secret Missions be its own Love Quest theme pack or a bonus mode over any theme?
 - Launch timeline and whether early monetization is planned.
 - Final hosting provider (milestone 5).
