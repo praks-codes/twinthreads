@@ -196,6 +196,21 @@ The server owns all timers. The state carries an absolute `deadline` (epoch ms).
 - Audio starts only after a first user tap (iOS Safari rule).
 - Phaser is imported only inside Love Kitchen's screen.
 
+### 7.1 Shared and game-specific UI
+
+```
+apps/web/src/
+  components/    Platform UI, plus anything two games actually use
+  room/          Home, lobby, in-room screens and useRoom()
+  games/
+    court/       Court's screens, components and theme
+```
+
+- **Platform UI is shared.** Everything around a game, such as creating and joining rooms, the room code, the player list and reconnect messages, is built once.
+- **Each game owns its screens and look.** A game's screens and theme live in its own folder, and games don't have to look alike.
+- **Share game UI only on real reuse.** Build a game's UI in its own folder. When a second game needs the same thing, move it to `components/`. Games never copy from or import from one another.
+- **Shared components are themed.** They take colours and fonts from CSS variables, and each game sets its own values.
+
 ## 8. Reconnection and resilience
 
 Mobile browsers pause background tabs and drop connections often. This is the most likely source of real-world bugs.
@@ -270,6 +285,7 @@ Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 2026-11-05 | Server listens on `0.0.0.0` | Needed for Docker and local network access |
 | 2026-11-05 | Tests live in a `test/` folder beside `src/` | Builds only ever see `src/` |
 | 2026-11-05 | `.astro` files are not typechecked | `@astrojs/check` would be an extra dependency for a placeholder page. Revisit at milestone 5 |
+| 2026-11-05 | Platform UI is shared, game UI is shared only on real reuse | Games have different screens and themes, so building shared game UI up front would be guesswork. No `packages/ui`, because only `apps/web` would use it |
 | 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
 
 ## 15. Open questions

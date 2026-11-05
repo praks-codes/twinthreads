@@ -41,6 +41,7 @@ Room logic stays in `apps/server` for this milestone, because it needs the clock
 - **`useRoom()` hook:** owns the socket, the stored token, reconnection and the latest `room:state`.
 - **Home screen:** display name, create, or join with a code.
 - **Room screen:** code, both players, connection status and Leave.
+- **Shared platform components:** `Button`, `TextField`, `RoomCode`, `PlayerList` and `ConnectionBanner`, placed as described in `ARCHITECTURE.md` section 7.1.
 - **Design foundations:** see below.
 
 ### Tests
