@@ -20,5 +20,6 @@ Two-player browser games for couples, played in private rooms with a six-charact
 - Update `ARCHITECTURE.md` when a decision changes
 - Update `docs/ROADMAP.md` when milestones or the direction of the games change; keep them out of `ARCHITECTURE.md`
 - Small commits, feature branches, pull requests into `main`
+- Exception: until the first playable game (Court v0, milestone 3), changes that only touch documents go straight to `main`, with no branch or pull request
 - Ask before adding a new dependency
 - Tests live in a `test/` folder beside `src/` in each package, never inside `src/`
