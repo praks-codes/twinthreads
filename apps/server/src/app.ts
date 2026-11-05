@@ -1,6 +1,7 @@
 import cors from "@fastify/cors";
 import type {
   ClientToServerEvents,
+  GameEffect,
   RoomStore,
   ServerToClientEvents,
 } from "@twinthreads/engine";
@@ -21,6 +22,7 @@ export interface AppDependencies {
   games: GameRegistry;
   countRooms: () => number;
   now: () => number;
+  runEffect?: (gameId: string, effect: GameEffect) => Promise<unknown>;
 }
 
 export function buildApp(
@@ -31,7 +33,7 @@ export function buildApp(
     | "ROOM_IDLE_MINUTES"
     | "RECONNECT_GRACE_SECONDS"
   >,
-  { store, games, countRooms, now }: AppDependencies,
+  { store, games, countRooms, now, runEffect }: AppDependencies,
 ) {
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
 
@@ -61,6 +63,7 @@ export function buildApp(
     graceMs: config.RECONNECT_GRACE_SECONDS * 1000,
     log: app.log,
     now,
+    ...(runEffect ? { runEffect } : {}),
   });
 
   app.addHook("preClose", async () => {

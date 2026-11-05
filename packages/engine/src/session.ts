@@ -1,6 +1,7 @@
 import { createSeededRng } from "./rng.js";
 import type {
   GameDefinition,
+  GameEffect,
   GameError,
   GameSession,
   Phase,
@@ -127,6 +128,37 @@ export function applyTimeout<State, Action, View>(
     now,
     rngForStep(session.seed, session.step),
   );
+  assertLegalState(
+    game as GameDefinition<State, unknown, unknown>,
+    game.phase(session.state),
+    state,
+  );
+  return { ...session, step: session.step + 1, state };
+}
+
+export function pendingEffects<State, Action, View>(
+  game: GameDefinition<State, Action, View>,
+  session: GameSession<State>,
+): GameEffect[] {
+  return game.pendingEffects?.(session.state) ?? [];
+}
+
+/** Does nothing if the effect is no longer pending, so a late result is harmless. */
+export function applyEffectResult<State, Action, View>(
+  game: GameDefinition<State, Action, View>,
+  session: GameSession<State>,
+  effect: { id: string; output: unknown },
+  now: number,
+): GameSession<State> {
+  const isPending = pendingEffects(game, session).some(
+    ({ id }) => id === effect.id,
+  );
+  if (!isPending || !game.applyEffect) return session;
+
+  const state = game.applyEffect(session.state, effect, {
+    now,
+    rng: rngForStep(session.seed, session.step),
+  });
   assertLegalState(
     game as GameDefinition<State, unknown, unknown>,
     game.phase(session.state),
