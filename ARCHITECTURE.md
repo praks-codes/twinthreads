@@ -263,6 +263,13 @@ Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 2026-11-05 | Hosting decided at milestone 5 | Architecture keeps the choice open |
 | 2026-11-05 | Game Master judges Court | No jury is possible with two players |
 | 2026-11-05 | Platform name is TwinThreads (briefly considered TwinStrings) | Repo is `twinthreads`, workspace packages use the `@twinthreads/*` scope |
+| 2026-11-05 | TypeScript 6.0.x instead of 7 | typescript-eslint does not support TypeScript 7 yet. Upgrade when it does |
+| 2026-11-05 | Vite dev server proxies `/health` and `/socket.io` | Phones on the local network reach the server through one origin, without CORS changes. Production builds call `VITE_SERVER_URL` directly |
+| 2026-11-05 | `/health` reads a `size` property on `InMemoryRoomStore` | Keeps the `RoomStore` interface as designed. A Redis store will need its own way to count rooms |
+| 2026-11-05 | `InMemoryRoomStore` takes an injected clock | The engine never reads time itself |
+| 2026-11-05 | Server listens on `0.0.0.0` | Needed for Docker and local network access |
+| 2026-11-05 | Tests live in a `test/` folder beside `src/` | Builds only ever see `src/` |
+| 2026-11-05 | `.astro` files are not typechecked | `@astrojs/check` would be an extra dependency for a placeholder page. Revisit at milestone 5 |
 | 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
 
 ## 15. Open questions

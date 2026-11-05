@@ -27,6 +27,8 @@ The direction of TwinThreads: which games we build, in what order, and the miles
 | 5   | Public pages and hosting | Court live on a real domain, SEO pages indexed                                                                         | Not started |
 | 6   | Couple's Mystery         | Reuses the engine with minimal new platform code                                                                       | Not started |
 
+Milestone specs: [Hello Room](hello-room.md) (draft, awaiting review).
+
 ## Design plan
 
 The owner designs TwinThreads, with Claude Code's help. No outside designer or illustrator is planned.
