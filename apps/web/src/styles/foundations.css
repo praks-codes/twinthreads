@@ -1,0 +1,69 @@
+/*
+  Shared design foundations. Placeholder values: the real look is decided in
+  milestone 2a. Components use these variables, so a game can set its own values.
+*/
+:root {
+  color-scheme: light dark;
+
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-text: #1c1c21;
+  --color-text-muted: #5d5d68;
+  --color-border: #c9c9d1;
+  --color-primary: #3a3a8c;
+  --color-on-primary: #ffffff;
+  --color-danger: #a32020;
+  --color-notice-bg: #ececf1;
+
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 40px;
+
+  --radius: 10px;
+  --tap-target: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #15151a;
+    --color-surface: #212128;
+    --color-text: #f1f1f4;
+    --color-text-muted: #a9a9b5;
+    --color-border: #4a4a55;
+    --color-primary: #a9a9f5;
+    --color-on-primary: #15151a;
+    --color-danger: #ff9c9c;
+    --color-notice-bg: #2c2c35;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
