@@ -13,6 +13,31 @@
   display: none;
 }
 
+/* Floats over the stage, so a dropped connection never moves the game around. */
+.page[data-game="court"] .banner {
+  position: fixed;
+  top: 96px;
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  padding: 6px 14px;
+  border: 3px solid #fff;
+  border-radius: 16px;
+  background: #3d0d33;
+  color: #fff;
+  font-family: "Baloo 2", system-ui, sans-serif;
+  font-weight: 700;
+  transform: translateX(-50%);
+}
+
+.page[data-game="court"] .banner--error {
+  border-color: #3d0d33;
+  background: #fff4f9;
+  color: #b3123a;
+}
+
 .page[data-game="court"] .leave {
   justify-self: center;
   width: min(100%, 280px);
