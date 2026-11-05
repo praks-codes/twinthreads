@@ -25,7 +25,8 @@ const THINKING: Partial<Record<CourtView["stage"], readonly string[]>> = {
     "The Court is pretending to take notes...",
   ],
   ruling: ["Judge Cupid is considering your objection...", "Order! Order..."],
-  crossExam: ["Judge Cupid is preparing a question..."],
+  replyReact: ["Judge Cupid is thinking about that...", "Hmm..."],
+  crossExam: ["Judge Cupid is preparing one last question..."],
   crossReact: ["Judge Cupid is studying your face..."],
   deliberating: [
     "Judge Cupid is deciding...",
@@ -331,34 +332,33 @@ function ObjectionPanel({
   );
 }
 
-function AnswerPanel({
+function TurnPanel({
   game,
+  label,
+  action,
+  button,
+  canRest,
   onAction,
 }: {
   game: CourtView;
+  label: string;
+  action: "reply" | "answer";
+  button: string;
+  canRest: boolean;
   onAction: GameScreenProps["onAction"];
 }) {
   const [text, setText] = useState("");
   return (
     <>
       <label className="court-field">
-        Your answer
+        {label}
         <textarea
           maxLength={MAX_STATEMENT}
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="Answer the judge..."
         />
       </label>
-      {game.lawyerStatus === "idle" ? (
-        <button
-          type="button"
-          className="court-lawyer"
-          onClick={() => onAction("askLawyer", {})}
-        >
-          Whisper from my AI lawyer
-        </button>
-      ) : (
+      {game.mover === game.defendant && (
         <LawyerCards
           game={game}
           selected={text}
@@ -370,10 +370,19 @@ function AnswerPanel({
         type="button"
         className="court-big"
         disabled={!text.trim()}
-        onClick={() => onAction("answer", { text: text.trim() })}
+        onClick={() => onAction(action, { text: text.trim() })}
       >
-        Answer the judge
+        {button}
       </button>
+      {canRest && (
+        <button
+          type="button"
+          className="court-plain"
+          onClick={() => onAction("rest", {})}
+        >
+          Rest my case
+        </button>
+      )}
     </>
   );
 }
@@ -454,10 +463,10 @@ function CaseFilePanel({
 
 /** Names the next step, so players always know what the button will do. */
 function nextStep(game: CourtView): string {
-  const from = game.stage === "ruling" ? game.objection?.returnTo : game.stage;
-  return from === "hearing" && game.crossExamOn
+  if (game.turn > game.totalTurns) return "Next: the verdict";
+  return game.turn === game.totalTurns
     ? "Next: cross-examination"
-    : "Next: the verdict";
+    : `Next: turn ${game.turn} of ${game.totalTurns}`;
 }
 
 function CourtRecord({
@@ -607,6 +616,11 @@ export default function CourtScreen({
       ? "Your defense? Choose your words poorly."
       : `${partner} is building a defense.`;
   else if (stage === "objection") judgeLine = "On what grounds?";
+  else if (stage === "reply")
+    judgeLine =
+      game.mover === myPlayerId
+        ? "Your turn. What do you say to that?"
+        : `${partner} is replying.`;
   else if (stage === "crossExam") judgeLine = game.crossQuestion ?? "";
   else if (stage === "sealed") judgeLine = "My verdict is under this seal.";
   else if (stage === "punishment") judgeLine = "And now, the price.";
@@ -614,11 +628,11 @@ export default function CourtScreen({
   let panel: ReactNode = null;
   switch (stage) {
     case "setup": {
-      const mine = game.setupChoices[myPlayerId];
-      const theirs = game.setupChoices[partnerId];
+      const mine = game.judgeChoices[myPlayerId] ?? null;
+      const theirs = game.judgeChoices[partnerId] ?? null;
       const badgeFor = (id: JudgeId) => {
-        const me = mine?.judge === id;
-        const them = theirs?.judge === id;
+        const me = mine === id;
+        const them = theirs === id;
         if (me && them) return "You both";
         if (me) return "You";
         return them ? partner : undefined;
@@ -635,24 +649,15 @@ export default function CourtScreen({
                 ...(badge ? { badge } : {}),
               };
             })}
-            selected={mine?.judge ?? null}
+            selected={mine}
             onPick={(judge) => onAction("setup", { judge })}
           />
-          <button
-            type="button"
-            className="court-plain"
-            aria-pressed={mine?.crossExam ?? true}
-            onClick={() =>
-              onAction("setup", { crossExam: !(mine?.crossExam ?? true) })
-            }
-          >
-            Cross-examination: you {mine?.crossExam ? "on" : "off"}, {partner}{" "}
-            {theirs?.crossExam ? "on" : "off"}
-          </button>
           <ContinueButton
             game={game}
             label={
-              game.setupAgreed ? "Court is in session" : "Agree on both first"
+              game.setupAgreed
+                ? "Court is in session"
+                : "Agree on a judge first"
             }
             onAction={onAction}
           />
@@ -678,6 +683,7 @@ export default function CourtScreen({
       );
       break;
     case "hearing":
+    case "replyReact":
     case "crossReact":
       panel = !game.judgeThinking && (
         <>
@@ -716,10 +722,33 @@ export default function CourtScreen({
         </>
       );
       break;
+    case "reply":
+      panel =
+        game.mover === myPlayerId ? (
+          <TurnPanel
+            key={game.turn}
+            game={game}
+            label="Your reply"
+            action="reply"
+            button="Say it"
+            canRest
+            onAction={onAction}
+          />
+        ) : (
+          <Waiting>{waitOn(`${partner} is writing a reply...`)}</Waiting>
+        );
+      break;
     case "crossExam":
       panel =
         game.crossQuestion === null ? null : iAmDefendant ? (
-          <AnswerPanel game={game} onAction={onAction} />
+          <TurnPanel
+            game={game}
+            label="Your answer"
+            action="answer"
+            button="Answer the judge"
+            canRest={false}
+            onAction={onAction}
+          />
         ) : (
           <Waiting>{waitOn(`${partner} is sweating...`)}</Waiting>
         );
@@ -906,6 +935,30 @@ export default function CourtScreen({
               </button>
             ))}
           </div>
+          {["accuse", "defend", "reply", "crossExam"].includes(stage) ||
+          ([
+            "hearing",
+            "replyReact",
+            "crossReact",
+            "ruling",
+            "objection",
+          ].includes(stage) &&
+            !game.judgeThinking) ? (
+            <p className="court-turns">
+              {game.turn > game.totalTurns ? (
+                <strong>All turns used</strong>
+              ) : (
+                <strong>
+                  Turn {game.turn} of {game.totalTurns}
+                </strong>
+              )}
+              <span>
+                {iAmProsecutor ? "Prosecutor" : "Defendant"}: you have{" "}
+                {game.turnsLeft[myPlayerId] ?? 0} left, {partner} has{" "}
+                {game.turnsLeft[partnerId] ?? 0}
+              </span>
+            </p>
+          ) : null}
           {judgeLine && (
             <div
               key={judgeLine}

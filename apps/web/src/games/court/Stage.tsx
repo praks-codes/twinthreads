@@ -54,10 +54,13 @@ function seatSpeech(game: CourtView, playerId: string): string {
       );
     }
   } else if (
-    stage === "defend" ||
-    stage === "hearing" ||
-    stage === "objection"
+    stage === "reply" ||
+    stage === "replyReact" ||
+    stage === "objection" ||
+    stage === "crossExam"
   ) {
+    if (game.lastSpeech?.by === playerId) says.push(game.lastSpeech.text);
+  } else if (stage === "defend" || stage === "hearing") {
     if (playerId === game.prosecutor) says.push(game.accusation ?? "");
     if (playerId === game.defendant && stage !== "defend") {
       says.push(game.defense ?? "");
@@ -72,6 +75,7 @@ function stageCrowd(game: CourtView): { crowd: Crowd; word: string } {
     game.stage === "ruling" ? game.objection?.reaction : game.reaction;
   const showing = [
     "hearing",
+    "replyReact",
     "ruling",
     "crossReact",
     "verdict",
