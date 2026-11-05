@@ -302,10 +302,11 @@ Milestones live in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 2026-11-05 | Leaving mid-game ends the game | A two-player game can't continue with one, and nobody new should inherit a half-played game |
 | 2026-11-05 | Timers keep running during the reconnect grace period | Otherwise a player could stall by dropping their connection. Revisit when Court's timers are designed, because a refresh can cost a turn |
 | 2026-11-05 | Milestones and game lineup moved to `docs/ROADMAP.md` | This file covers architecture and design decisions only, so product direction can change independently |
+| 2026-11-05 | An AI judges Court, and players never judge | Players write their own accusations and defenses, so a fixed scoring rule can't rate them, and two partners can't fairly judge their own case |
 
 ## 15. Open questions
 
-- Court verdict: pure skill-based scoring, or also include each partner's private rating of the other's argument?
+- Which AI model Court uses and where it runs, and how its answers enter pure game logic (milestone 3 spec).
 - Should Secret Missions be its own Love Quest theme pack or a bonus mode over any theme?
 - Launch timeline and whether early monetization is planned.
 - Final hosting provider (milestone 5).

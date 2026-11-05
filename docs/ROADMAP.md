@@ -23,7 +23,7 @@ The direction of TwinThreads: which games we build, in what order, and the miles
 | 2   | Phase engine             | A fake test game runs through every phase                                                                              | Done        |
 | 2a  | Design direction         | Mood, look and Court's screen-by-screen flow are agreed in a short design doc, with clickable mockups tried on a phone | In progress |
 | 3   | Court v0                 | A couple can play three rounds start to finish, ugly UI is fine                                                        | Not started |
-| 4   | Court polish             | Animations, sound, share card, 25 accusations, 12 defenses                                                             | Not started |
+| 4   | Court polish             | Richer interactions, animations, sound, share card, 25 accusations, 12 defenses                                        | Not started |
 | 5   | Public pages and hosting | Court live on a real domain, SEO pages indexed                                                                         | Not started |
 | 6   | Couple's Mystery         | Reuses the engine with minimal new platform code                                                                       | Not started |
 
@@ -52,5 +52,5 @@ Every screen is designed for phones first, then adapted for tablets and laptops,
 
 ### Mood by game
 
-- **Relationship Court:** playful, silly and comedic.
+- **Relationship Court:** playful, silly and comedic, in a bubbly, lovely theme. See [Design direction](design-direction.md).
 - **Other games:** decided later.
