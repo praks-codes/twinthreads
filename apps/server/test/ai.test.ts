@@ -52,6 +52,12 @@ describe("buildCourtPrompt", () => {
     }
   });
 
+  it("tells the judge not to invent things, and gives no examples to copy", () => {
+    const system = buildCourtPrompt(HEARING)?.system ?? "";
+    expect(system).toContain("Never make up");
+    expect(system).not.toMatch(/biscuit|milk|tea\b/i);
+  });
+
   it("gives every kind of request the whole game so far", () => {
     const history = ["Case 1: Player 1 accuses Player 2.", "Judge: Old joke."];
     for (const kind of [
