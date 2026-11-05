@@ -20,16 +20,21 @@ The direction of TwinThreads: which games we build, in what order, and the miles
 | --- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ----------- |
 | 0   | Repo and tooling         | Empty apps run locally and on a phone                                                                                  | Done        |
 | 1   | Hello Room               | Two phones share a room code, see each other live, survive a refresh                                                   | Done        |
-| 2   | Phase engine             | A fake test game runs through every phase                                                                              | In progress |
+| 2   | Phase engine             | A fake test game runs through every phase                                                                              | Done        |
 | 2a  | Design direction         | Mood, look and Court's screen-by-screen flow are agreed in a short design doc, with clickable mockups tried on a phone | Not started |
 | 3   | Court v0                 | A couple can play three rounds start to finish, ugly UI is fine                                                        | Not started |
 | 4   | Court polish             | Animations, sound, share card, 25 accusations, 12 defenses                                                             | Not started |
 | 5   | Public pages and hosting | Court live on a real domain, SEO pages indexed                                                                         | Not started |
 | 6   | Couple's Mystery         | Reuses the engine with minimal new platform code                                                                       | Not started |
 
-Milestone specs: [Hello Room](hello-room.md) (done), [Phase engine](phase-engine.md) (approved).
+Milestone specs: [Hello Room](hello-room.md) (done), [Phase engine](phase-engine.md) (done).
 
-Still open from milestone 1: test on an Android phone and across different networks, once hosted at milestone 5.
+Still open from milestones 1 and 2: test on an Android phone and across different networks, once hosted at milestone 5.
+
+To settle in Court's spec:
+
+- **Lost turns while reconnecting:** timers keep running for about 75 seconds after a phone locks, until the game pauses. In Number Duel that can cost nearly two of the three rounds, which could feel unfair in Court.
+- **Partner status on game screens:** Number Duel can show "Your partner is choosing..." under "Partner reconnecting...". Court's screens should take the connection status into account.
 
 ## Design plan
 

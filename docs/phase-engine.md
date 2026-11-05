@@ -1,6 +1,6 @@
 # Milestone 2: Phase engine
 
-**Status:** approved. Built, awaiting testing on real devices.
+**Status:** done. Still open: testing on Android and across different networks, once hosted at milestone 5.
 
 ## Goal
 
@@ -146,12 +146,12 @@ Automated: lint, typecheck, tests and build pass in CI.
 
 On two devices on the same Wi-Fi, such as a phone and a laptop:
 
-- [ ] Both players tap Ready and the game starts
-- [ ] A pick isn't visible on the other device until `REVEAL`
-- [ ] The countdown matches on both devices
-- [ ] Not picking in time still moves the game on
-- [ ] A full game reaches `RESULTS` with the right scores
-- [ ] Both tapping Play again starts a new game
-- [ ] Refreshing mid-game returns to the right phase and picks
-- [ ] Locking a phone for over a minute pauses the game, and it continues on return
-- [ ] Leaving mid-game ends the game and tells the other player
+- [x] Both players tap Ready and the game starts
+- [x] A pick isn't visible on the other device until `REVEAL`
+- [x] The countdown matches on both devices
+- [x] Not picking in time still moves the game on
+- [x] A full game reaches `RESULTS` with the right scores
+- [x] Both tapping Play again starts a new game
+- [x] Refreshing mid-game returns to the right phase and picks
+- [x] Locking a phone for over a minute pauses the game, and it continues on return
+- [x] Leaving mid-game ends the game and tells the other player
