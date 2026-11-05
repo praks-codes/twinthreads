@@ -15,7 +15,14 @@ export function PlayerList({
   return (
     <ul className="player-list">
       {players.map((player) => (
-        <li key={player.playerId} className="player-list__item">
+        <li
+          key={player.playerId}
+          className={
+            player.connected && player.ready
+              ? "player-list__item player-list__item--ready"
+              : "player-list__item"
+          }
+        >
           <span>
             {player.displayName}
             {player.playerId === myPlayerId ? " (you)" : ""}
@@ -24,7 +31,7 @@ export function PlayerList({
             {!player.connected
               ? "Offline"
               : player.ready
-                ? "Ready"
+                ? "✓ Ready"
                 : "Connected"}
           </span>
         </li>
