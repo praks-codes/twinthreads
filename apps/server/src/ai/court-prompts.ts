@@ -101,6 +101,17 @@ export function buildCourtPrompt(effect: GameEffect): CourtPrompt | null {
         user: `${so}\nBoth sides have just spoken. React to them.`,
         maxTokens: 160,
       };
+    case "reply":
+      return {
+        system: system(
+          judgeRole,
+          `\${REACTION_FIELDS},
+"score": whole number from -10 to 10, positive if this helped the player who just spoke, negative if it went badly,
+"serious": true only if this is about real harm such as abuse, violence, cheating or self-harm, otherwise false`,
+        ),
+        user: `\${so}\nThe \${String(input.speakerRole)} just spoke. Their words are the last line above. React to what they said.`,
+        maxTokens: 160,
+      };
     case "ruling":
       return {
         system: system(
@@ -119,7 +130,8 @@ Decide if the objection is fair. Your line must answer what they said.`,
           judgeRole,
           `"question": one funny question for the defendant about what they said, at most 14 simple words`,
         ),
-        user: `${so}\nAsk the defendant one question.`,
+        user: `${so}
+This is the last turn. Ask the defendant one question, based on everything said so far.`,
         maxTokens: 80,
       };
     case "crossReact":

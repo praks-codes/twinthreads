@@ -112,6 +112,7 @@ export const FALLBACK = {
     "Who told you that was OK?",
   ],
   crossReact: ["Is that your answer? OK.", "Huh. That almost makes sense."],
+  reply: ["OK. I heard that.", "Hmm. Go on.", "That is a good one. I think."],
   lawyer: [
     { style: "Sincere", text: "I'm sorry. Can I make it up to you?" },
     { style: "Unhinged", text: "The fridge told me to do it." },

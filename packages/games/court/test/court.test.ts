@@ -41,8 +41,8 @@ function bothContinue(session: GameSession<CourtState>) {
 }
 
 /** Answers every waiting AI request, with null meaning the AI failed. */
-function agree(session: GameSession<CourtState>, crossExam = true) {
-  const choice = { judge: "tired", crossExam };
+function agree(session: GameSession<CourtState>) {
+  const choice = { judge: "tired" };
   return act(act(session, A, "setup", choice), B, "setup", choice);
 }
 
@@ -60,6 +60,12 @@ function settle(
     current = applyEffectResult(game, current, { id, output }, now);
   }
   return current;
+}
+
+function toCrossExam() {
+  let session = bothContinue(settle(toHearing()));
+  session = act(act(session, A, "rest"), B, "rest");
+  return session;
 }
 
 function toHearing(text = "I did it for us.") {
@@ -90,15 +96,6 @@ describe("Court setup", () => {
     const begun = act(once, B, "continue");
     expect(begun.state.stage).toBe("accuse");
     expect(begun.state.judge).toBe("romantic");
-  });
-
-  it("makes them agree on cross-examination too", () => {
-    const choice = { judge: "tired" };
-    let session = act(act(begin(), A, "setup", choice), B, "setup", choice);
-    session = act(session, A, "setup", { crossExam: false });
-    expect(viewFor(game, session, B).setupAgreed).toBe(false);
-    session = bothContinue(act(session, B, "setup", { crossExam: false }));
-    expect(session.state.crossExamOn).toBe(false);
   });
 
   it("clears an approval when either partner changes their mind", () => {
@@ -301,7 +298,7 @@ describe("objections", () => {
     expect(session.state.objection?.sustained).toBe(true);
     expect(session.state.meter).toBe(before + 6);
     session = bothContinue(session);
-    expect(session.state.stage).toBe("crossExam");
+    expect(session.state.stage).toBe("reply");
     expect(session.state.objection).toBeNull();
   });
 
@@ -327,7 +324,7 @@ describe("objections", () => {
   });
 
   it("goes to the verdict after objecting to a cross-examination answer", () => {
-    let session = bothContinue(settle(toHearing()));
+    let session = toCrossExam();
     session = settle(session, { question: "Why?" });
     session = act(session, B, "answer", { text: "Because." });
     session = act(settle(session), A, "object");
@@ -343,8 +340,12 @@ describe("objections", () => {
     expect(applyAction(game, session, B, { type: "object" }, 1).ok).toBe(false);
 
     session = bothContinue(session);
-    session = settle(session, { question: "Why?" });
-    session = act(session, B, "answer", { text: "Because." });
+    session = act(session, A, "reply", { text: "No it was you." });
+    session = settle(session);
+    expect(viewFor(game, session, A).canObject).toBe(false);
+    expect(viewFor(game, session, B).canObject).toBe(true);
+    session = bothContinue(session);
+    session = act(session, B, "reply", { text: "No, you." });
     session = settle(session);
     expect(viewFor(game, session, A).canObject).toBe(true);
     expect(viewFor(game, session, B).canObject).toBe(false);
@@ -358,43 +359,123 @@ describe("objections", () => {
   });
 });
 
-function afterArguing(crossExam = false) {
-  let session = begin();
-  session = bothContinue(agree(session, crossExam));
-  session = act(session, A, "accuse", { text: "Stole the duvet." });
-  session = act(session, B, "defend", { text: "Was asleep." });
-  session = bothContinue(settle(session));
-  return session;
-}
+describe("turns", () => {
+  it("plays five turns in order, then goes to the verdict", () => {
+    let session = started();
+    const turn = () => viewFor(game, session, A);
+    expect(turn().turn).toBe(1);
+    expect(turn().mover).toBe(A);
+    expect(turn().turnsLeft).toEqual({ [A]: 2, [B]: 3 });
 
-describe("cross-examination", () => {
-  it("is skipped when turned off", () => {
-    expect(afterArguing(false).state.stage).toBe("deliberating");
-  });
+    session = act(session, A, "accuse", { text: "Stole the duvet." });
+    expect(turn().turn).toBe(2);
+    expect(turn().mover).toBe(B);
+    expect(turn().turnsLeft).toEqual({ [A]: 1, [B]: 3 });
 
-  it("waits for a question, takes an answer, then reacts", () => {
-    let session = afterArguing(true);
+    session = act(session, B, "defend", { text: "Was asleep." });
+    session = bothContinue(settle(session));
+    expect(session.state.stage).toBe("reply");
+    expect(turn().turn).toBe(3);
+    expect(turn().mover).toBe(A);
+
+    session = act(session, A, "reply", { text: "You were not." });
+    expect(session.state.stage).toBe("replyReact");
+    session = bothContinue(settle(session));
+    expect(turn().turn).toBe(4);
+    expect(turn().mover).toBe(B);
+    expect(turn().turnsLeft).toEqual({ [A]: 0, [B]: 2 });
+
+    session = act(session, B, "reply", { text: "I was too." });
+    session = bothContinue(settle(session));
     expect(session.state.stage).toBe("crossExam");
-    expect(
-      applyAction(
-        game,
-        session,
-        B,
-        { type: "answer", payload: { text: "A" } },
-        1,
-      ).ok,
-    ).toBe(false);
+    expect(turn().turn).toBe(5);
+
     session = settle(session, { question: "Why?" });
-    expect(session.state.crossQuestion).toBe("Why?");
+    expect(turn().mover).toBe(B);
     session = act(session, B, "answer", { text: "Because." });
-    expect(session.state.stage).toBe("crossReact");
     session = bothContinue(settle(session));
     expect(session.state.stage).toBe("deliberating");
+    expect(turn().turnsLeft).toEqual({ [A]: 0, [B]: 0 });
+  });
+
+  it("only lets the right player take a turn", () => {
+    const session = bothContinue(settle(toHearing()));
+    const wrong = applyAction(
+      game,
+      session,
+      B,
+      { type: "reply", payload: { text: "Me first" } },
+      1,
+    );
+    expect(wrong.ok).toBe(false);
+  });
+
+  it("lets a player rest, which uses up that turn", () => {
+    let session = act(bothContinue(settle(toHearing())), A, "rest");
+    expect(session.state.turn).toBe(4);
+    expect(viewFor(game, session, B).mover).toBe(B);
+    session = act(session, B, "rest");
+    expect(session.state.stage).toBe("crossExam");
+  });
+
+  it("uses up the turn if time runs out on a reply", () => {
+    let session = bothContinue(settle(toHearing()));
+    session = applyTimeout(game, session, session.state.deadline ?? 0);
+    expect(session.state.turn).toBe(4);
+    expect(session.state.record.at(-1)?.text).toBe("Ran out of time.");
+  });
+
+  it("scores a reply for whoever said it", () => {
+    let session = bothContinue(settle(toHearing()));
+    const before = session.state.meter;
+    session = act(session, A, "reply", { text: "Good point." });
+    session = bothContinue(settle(session, { line: "Yes.", score: 5 }));
+    expect(session.state.meter).toBe(before + 5);
+    session = act(session, B, "reply", { text: "Better point." });
+    session = settle(session, { line: "Yes.", score: 5 });
+    expect(session.state.meter).toBe(before);
+  });
+
+  it("uses a backup line when the AI fails on a reply", () => {
+    let session = bothContinue(settle(toHearing()));
+    session = act(session, A, "reply", { text: "Good point." });
+    session = settle(session, null);
+    expect(session.state.reaction?.line).toEqual(expect.any(String));
+    expect(session.state.deadline).not.toBeNull();
+  });
+
+  it("dismisses a case if a later turn turns serious", () => {
+    let session = bothContinue(settle(toHearing()));
+    session = act(session, A, "reply", { text: "You hit me last year." });
+    expect(session.state.ending).toBe("dismissed");
+    session = started();
+    session = act(session, A, "accuse", { text: "Stole the duvet." });
+    session = act(session, B, "defend", { text: "No." });
+    session = act(bothContinue(settle(session)), A, "reply", { text: "Yes." });
+    session = settle(session, { line: "Oh.", serious: true });
+    expect(session.state.ending).toBe("dismissed");
+  });
+
+  it("offers the lawyer only on the defendant's turns", () => {
+    let session = bothContinue(settle(toHearing()));
+    const early = applyAction(
+      game,
+      session,
+      A,
+      { type: "askLawyer", payload: {} },
+      1,
+    );
+    expect(early.ok).toBe(false);
+    session = act(session, A, "rest");
+    session = settle(act(session, B, "askLawyer"), null);
+    expect(viewFor(game, session, B).lawyerSuggestions).toHaveLength(3);
   });
 });
 
 function toDeliberating() {
-  return afterArguing(false);
+  let session = settle(toCrossExam(), { question: "Why?" });
+  session = act(session, B, "answer", { text: "Because." });
+  return bothContinue(settle(session));
 }
 
 describe("the verdict", () => {

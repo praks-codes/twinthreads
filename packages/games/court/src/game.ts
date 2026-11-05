@@ -28,6 +28,15 @@ export const COURT_GAME_ID = "court";
 export const TOTAL_CASES = 3;
 export const MAX_STATEMENT = 140;
 export const OBJECTIONS_PER_GAME = 3;
+/** Whose turn each one is. The last is the judge's question to the defendant. */
+const TURN_ROLES = [
+  "prosecutor",
+  "defendant",
+  "prosecutor",
+  "defendant",
+  "defendant",
+] as const;
+export const TURNS_PER_CASE = TURN_ROLES.length;
 const MAX_METER_STEP = 12;
 const OBJECTION_STEP = 6;
 const CLOSE_CASE_MARGIN = 15;
@@ -67,6 +76,8 @@ export type Stage =
   | "hearing"
   | "objection"
   | "ruling"
+  | "reply"
+  | "replyReact"
   | "crossExam"
   | "crossReact"
   | "deliberating"
@@ -84,6 +95,8 @@ const STAGE_PHASE: Record<Stage, Phase> = {
   hearing: "PRIVATE_INPUT",
   objection: "PRIVATE_INPUT",
   ruling: "PRIVATE_INPUT",
+  reply: "PRIVATE_INPUT",
+  replyReact: "PRIVATE_INPUT",
   crossExam: "PRIVATE_INPUT",
   crossReact: "PRIVATE_INPUT",
   deliberating: "REVEAL",
@@ -137,19 +150,13 @@ export interface RecordEntry {
   text: string;
 }
 
-export interface SetupChoice {
-  judge: JudgeId | null;
-  crossExam: boolean;
-}
-
 export interface CourtState {
   playerIds: [PlayerId, PlayerId];
   stage: Stage;
   deadline: number | null;
   caseNumber: number;
   judge: JudgeId;
-  crossExamOn: boolean;
-  setupChoices: Record<PlayerId, SetupChoice>;
+  judgeChoices: Record<PlayerId, JudgeId | null>;
   scores: Record<PlayerId, number>;
   objectionsLeft: Record<PlayerId, number>;
   /** 0 to 100, and above 50 favours this case's prosecutor. */
@@ -157,6 +164,9 @@ export interface CourtState {
   accusation: string | null;
   defense: string | null;
   autoPicked: boolean;
+  /** The turn being played, from 1. Past the last one once they're all used. */
+  turn: number;
+  lastSpeech: { by: PlayerId; text: string } | null;
   lawyerStatus: "idle" | "pending" | "ready";
   lawyerSuggestions: Suggestion[];
   reaction: Reaction | null;
@@ -165,7 +175,7 @@ export interface CourtState {
     by: PlayerId;
     ground: number;
     argument: string;
-    returnTo: "hearing" | "crossReact";
+    returnTo: "hearing" | "replyReact" | "crossReact";
     sustained: boolean | null;
     reaction: Reaction | null;
   } | null;
@@ -186,13 +196,15 @@ export interface CourtState {
 }
 
 export type CourtAction =
-  | { type: "setup"; payload: { judge?: JudgeId; crossExam?: boolean } }
+  | { type: "setup"; payload: { judge: JudgeId } }
   | { type: "continue"; payload: Record<string, never> }
   | { type: "accuse"; payload: { text: string } }
   | { type: "defend"; payload: { text: string } }
   | { type: "askLawyer"; payload: Record<string, never> }
   | { type: "object"; payload: Record<string, never> }
   | { type: "argue"; payload: { ground: number; argument: string } }
+  | { type: "reply"; payload: { text: string } }
+  | { type: "rest"; payload: Record<string, never> }
   | { type: "answer"; payload: { text: string } }
   | { type: "breakSeal"; payload: Record<string, never> }
   | { type: "mercy"; payload: { pardon: boolean } }
@@ -207,8 +219,7 @@ export interface CourtView {
   prosecutor: PlayerId;
   defendant: PlayerId;
   judge: JudgeId;
-  crossExamOn: boolean;
-  setupChoices: Record<PlayerId, SetupChoice>;
+  judgeChoices: Record<PlayerId, JudgeId | null>;
   setupAgreed: boolean;
   scores: Record<PlayerId, number>;
   myObjections: number;
@@ -220,6 +231,12 @@ export interface CourtView {
   accusation: string | null;
   defense: string | null;
   autoPicked: boolean;
+  turn: number;
+  totalTurns: number;
+  turnsLeft: Record<PlayerId, number>;
+  /** Whose turn it is to say something, if anyone's. */
+  mover: PlayerId | null;
+  lastSpeech: CourtState["lastSpeech"];
   lawyerStatus: CourtState["lawyerStatus"];
   lawyerSuggestions: Suggestion[];
   reaction: Reaction | null;
@@ -338,30 +355,32 @@ function note(
   return { ...state, record: [...state.record, entry] };
 }
 
-function setupAgreed({ playerIds: [a, b], setupChoices }: CourtState): boolean {
-  const first = setupChoices[a];
-  const second = setupChoices[b];
-  return (
-    !!first?.judge &&
-    first.judge === second?.judge &&
-    first.crossExam === second.crossExam
-  );
+function setupAgreed({ playerIds: [a, b], judgeChoices }: CourtState): boolean {
+  return !!judgeChoices[a] && judgeChoices[a] === judgeChoices[b];
+}
+
+function turnPlayer(state: CourtState, turn: number): PlayerId | null {
+  const role = TURN_ROLES[turn - 1];
+  if (!role) return null;
+  return role === "prosecutor" ? prosecutorOf(state) : defendantOf(state);
+}
+
+function turnsLeftFor(state: CourtState, playerId: PlayerId): number {
+  let left = 0;
+  for (let turn = state.turn; turn <= TURNS_PER_CASE; turn++) {
+    if (turnPlayer(state, turn) === playerId) left += 1;
+  }
+  return left;
 }
 
 /** If time runs out on a disagreement, the Court picks one partner's choice. */
 function resolveSetup(state: CourtState, rng: Rng): CourtState {
   const [a, b] = state.playerIds;
-  const first = state.setupChoices[a];
-  const second = state.setupChoices[b];
-  const judges = [first?.judge, second?.judge].filter(
+  const judges = [state.judgeChoices[a], state.judgeChoices[b]].filter(
     (judge): judge is JudgeId => !!judge,
   );
   const judge = judges.length > 0 ? pick(judges, rng) : state.judge;
-  const crossExamOn = pick(
-    [first?.crossExam ?? true, second?.crossExam ?? true],
-    rng,
-  );
-  const next = { ...state, judge, crossExamOn };
+  const next = { ...state, judge };
   return setupAgreed(state)
     ? next
     : note(
@@ -381,7 +400,13 @@ function fileAccusation(
 ): CourtState {
   return toStage(
     note(
-      { ...state, accusation: text, autoPicked },
+      {
+        ...state,
+        accusation: text,
+        autoPicked,
+        turn: 2,
+        lastSpeech: { by: prosecutorOf(state), text },
+      },
       prosecutorOf(state),
       autoPicked ? "Accusation, picked by the Court" : "Accusation",
       text,
@@ -400,7 +425,13 @@ function fileDefense(
 ): CourtState {
   return startHearing(
     note(
-      { ...state, defense: text, autoPicked },
+      {
+        ...state,
+        defense: text,
+        autoPicked,
+        turn: 3,
+        lastSpeech: { by: defendantOf(state), text },
+      },
       defendantOf(state),
       autoPicked ? "Defense, picked by the Court" : "Defense",
       text,
@@ -491,21 +522,7 @@ function startHearing(
 ): CourtState {
   const text = `${state.accusation ?? ""} ${state.defense ?? ""}`;
   // Checked here as well as by the AI, so it still holds if the AI is down.
-  if (SERIOUS.test(text)) {
-    return closeCase(
-      {
-        ...note(state, "judge", "Dismissed", FALLBACK.dismissed),
-        reaction: {
-          line: FALLBACK.dismissed,
-          crowd: "aww",
-          judgeMood: "pleased",
-        },
-      },
-      now,
-      timings,
-      "dismissed",
-    );
-  }
+  if (SERIOUS.test(text)) return dismissSerious(state, now, timings);
   return addEffect(toStage(state, "hearing", null), "hearing", {
     ...names(state),
     accusation: state.accusation,
@@ -513,8 +530,25 @@ function startHearing(
   });
 }
 
-function afterHearing(state: CourtState): CourtState {
-  if (!state.crossExamOn) return startDeliberating(state);
+/** Moves to whichever turn is next, or to the verdict once they're all used. */
+function startNextTurn(
+  state: CourtState,
+  now: number,
+  timings: CourtTimings,
+): CourtState {
+  if (state.turn > TURNS_PER_CASE) return startDeliberating(state);
+  if (TURN_ROLES[state.turn - 1] !== undefined && state.turn < TURNS_PER_CASE) {
+    return toStage(
+      {
+        ...state,
+        reaction: null,
+        lawyerStatus: "idle",
+        lawyerSuggestions: [],
+      },
+      "reply",
+      now + timings.writeMs,
+    );
+  }
   return addEffect(
     toStage(
       {
@@ -558,6 +592,8 @@ function startNextCase(
     accusation: null,
     defense: null,
     autoPicked: false,
+    turn: 1,
+    lastSpeech: null,
     lawyerStatus: "idle",
     lawyerSuggestions: [],
     reaction: null,
@@ -583,26 +619,19 @@ function advance(
 ): CourtState {
   switch (state.stage) {
     case "setup": {
-      const choice = state.setupChoices[state.playerIds[0]];
-      return toStage(
-        {
-          ...state,
-          judge: choice?.judge ?? state.judge,
-          crossExamOn: choice?.crossExam ?? state.crossExamOn,
-        },
-        "accuse",
-        now + timings.writeMs,
-      );
+      const judge = state.judgeChoices[state.playerIds[0]] ?? state.judge;
+      return toStage({ ...state, judge }, "accuse", now + timings.writeMs);
     }
     case "hearing":
-      return afterHearing(state);
+      return startNextTurn(state, now, timings);
     case "ruling": {
       // Straight to what comes next, so a statement can only be objected to once.
       const stage = state.objection?.returnTo ?? "hearing";
       return advance({ ...state, stage, objection: null }, now, timings);
     }
+    case "replyReact":
     case "crossReact":
-      return startDeliberating(state);
+      return startNextTurn(state, now, timings);
     case "sealed":
       return toStage(revealVerdict(state), "verdict", now + timings.verdictMs);
     case "verdict":
@@ -680,6 +709,7 @@ function applyMercy(
 const CONTINUE_STAGES: readonly Stage[] = [
   "setup",
   "hearing",
+  "replyReact",
   "ruling",
   "crossReact",
   "verdict",
@@ -693,6 +723,7 @@ function canObject(state: CourtState, playerId: PlayerId): boolean {
   }
   // Only the side that didn't just speak can object to what was said.
   if (state.stage === "hearing") return prosecutorOf(state) === playerId;
+  if (state.stage === "replyReact") return state.lastSpeech?.by !== playerId;
   if (state.stage === "crossReact") return prosecutorOf(state) === playerId;
   return false;
 }
@@ -720,23 +751,17 @@ function parseCourtAction(input: unknown): Result<CourtAction, GameError> {
     case "askLawyer":
     case "object":
     case "breakSeal":
+    case "rest":
       return ok({ type, payload: {} });
     case "setup": {
-      const { judge, crossExam } = payload;
-      if (judge !== undefined && !Object.hasOwn(JUDGES, String(judge))) {
-        return bad;
-      }
-      if (crossExam !== undefined && typeof crossExam !== "boolean") return bad;
-      return ok({
-        type,
-        payload: {
-          ...(judge === undefined ? {} : { judge: judge as JudgeId }),
-          ...(crossExam === undefined ? {} : { crossExam }),
-        },
-      });
+      const { judge } = payload;
+      return typeof judge === "string" && Object.hasOwn(JUDGES, judge)
+        ? ok({ type, payload: { judge: judge as JudgeId } })
+        : bad;
     }
     case "accuse":
     case "defend":
+    case "reply":
     case "answer": {
       const text = cleanText(payload.text, MAX_STATEMENT);
       return text === null
@@ -883,6 +908,42 @@ function applyEffectOutput(
         now + timings.showMs,
       );
     }
+    case "reply": {
+      if (reaction?.serious) {
+        return closeCase(
+          {
+            ...note(state, "judge", "Dismissed", reaction.line),
+            reaction: {
+              line: reaction.line,
+              crowd: "aww",
+              judgeMood: "pleased",
+            },
+          },
+          now,
+          timings,
+          "dismissed",
+        );
+      }
+      const line = reaction?.line ?? pick(FALLBACK.reply, rng);
+      const score = reaction?.score ?? 0;
+      const byProsecutor = state.lastSpeech?.by === prosecutorOf(state);
+      return toStage(
+        {
+          ...note(state, "judge", "Judge", line),
+          meter: bumpMeter(state, byProsecutor ? score : -score),
+          moods: reaction
+            ? setMoods(state, reaction.prosecutorMood, reaction.defendantMood)
+            : state.moods,
+          reaction: {
+            line,
+            crowd: reaction?.crowd ?? "gasp",
+            judgeMood: reaction?.judgeMood ?? "stern",
+          },
+        },
+        "replyReact",
+        now + timings.showMs,
+      );
+    }
     case "ruling": {
       const objection = state.objection;
       if (!objection) return state;
@@ -1007,17 +1068,15 @@ export function createCourt(
         deadline: now + timings.setupMs,
         caseNumber: 1,
         judge: "tired",
-        crossExamOn: true,
-        setupChoices: {
-          [a]: { judge: null, crossExam: true },
-          [b]: { judge: null, crossExam: true },
-        },
+        judgeChoices: { [a]: null, [b]: null },
         scores: { [a]: 0, [b]: 0 },
         objectionsLeft: { [a]: OBJECTIONS_PER_GAME, [b]: OBJECTIONS_PER_GAME },
         meter: 50,
         accusation: null,
         defense: null,
         autoPicked: false,
+        turn: 1,
+        lastSpeech: null,
         lawyerStatus: "idle",
         lawyerSuggestions: [],
         reaction: null,
@@ -1062,21 +1121,12 @@ export function createCourt(
         }
         case "setup":
           if (state.stage !== "setup") return WRONG_TIME();
-          // Changing anything means both partners have to agree again.
+          // Changing their mind means both partners have to agree again.
           return done({
             ...state,
-            setupChoices: {
-              ...state.setupChoices,
-              [playerId]: {
-                judge:
-                  action.payload.judge ??
-                  state.setupChoices[playerId]?.judge ??
-                  null,
-                crossExam:
-                  action.payload.crossExam ??
-                  state.setupChoices[playerId]?.crossExam ??
-                  true,
-              },
+            judgeChoices: {
+              ...state.judgeChoices,
+              [playerId]: action.payload.judge,
             },
             continueVotes: [],
           });
@@ -1108,7 +1158,14 @@ export function createCourt(
           );
         case "askLawyer": {
           const answering = state.stage === "crossExam";
-          if (state.stage !== "defend" && !answering) return WRONG_TIME();
+          if (
+            state.stage !== "defend" &&
+            state.stage !== "reply" &&
+            !answering
+          ) {
+            return WRONG_TIME();
+          }
+          if (turnPlayer(state, state.turn) !== playerId) return NOT_YOURS();
           if (playerId !== defendant) return NOT_YOURS();
           if (state.lawyerStatus !== "idle") return WRONG_TIME();
           if (answering && state.crossQuestion === null) return WRONG_TIME();
@@ -1127,6 +1184,27 @@ export function createCourt(
           return done(
             fileDefense(state, action.payload.text, false, now, timings),
           );
+        case "reply": {
+          if (state.stage !== "reply") return WRONG_TIME();
+          if (turnPlayer(state, state.turn) !== playerId) return NOT_YOURS();
+          return done(
+            fileReply(state, playerId, action.payload.text, now, timings),
+          );
+        }
+        case "rest": {
+          if (state.stage !== "reply") return WRONG_TIME();
+          if (turnPlayer(state, state.turn) !== playerId) return NOT_YOURS();
+          return done(
+            startNextTurn(
+              {
+                ...note(state, playerId, "Reply", "Rested their case."),
+                turn: state.turn + 1,
+              },
+              now,
+              timings,
+            ),
+          );
+        }
         case "object": {
           if (!canObject(state, playerId)) return WRONG_TIME();
           return done(
@@ -1194,7 +1272,7 @@ export function createCourt(
             return WRONG_TIME();
           }
           if (playerId !== defendant) return NOT_YOURS();
-          return done(submitAnswer(state, action.payload.text));
+          return done(submitAnswer(state, action.payload.text, now, timings));
         }
         case "breakSeal":
           // Both players can tap the seal at once, and the first one wins.
@@ -1239,8 +1317,7 @@ export function createCourt(
         prosecutor,
         defendant,
         judge: state.judge,
-        crossExamOn: state.crossExamOn,
-        setupChoices: state.setupChoices,
+        judgeChoices: state.judgeChoices,
         setupAgreed: setupAgreed(state),
         scores: state.scores,
         myObjections: state.objectionsLeft[playerId] ?? 0,
@@ -1254,6 +1331,16 @@ export function createCourt(
         accusation: state.accusation,
         defense: state.defense,
         autoPicked: state.autoPicked,
+        turn: state.turn,
+        totalTurns: TURNS_PER_CASE,
+        turnsLeft: {
+          [prosecutor]: turnsLeftFor(state, prosecutor),
+          [defendant]: turnsLeftFor(state, defendant),
+        },
+        mover: ["accuse", "defend", "reply", "crossExam"].includes(state.stage)
+          ? turnPlayer(state, state.turn)
+          : null,
+        lastSpeech: state.lastSpeech,
         lawyerStatus: isDefendant ? state.lawyerStatus : "idle",
         // A defense idea is private until the defendant actually uses one.
         lawyerSuggestions: isDefendant ? state.lawyerSuggestions : [],
@@ -1298,6 +1385,17 @@ export function createCourt(
             now,
             timings,
           );
+        case "reply": {
+          const mover = turnPlayer(state, state.turn) ?? defendantOf(state);
+          return startNextTurn(
+            {
+              ...note(state, mover, "Reply", "Ran out of time."),
+              turn: state.turn + 1,
+            },
+            now,
+            timings,
+          );
+        }
         case "objection": {
           const objection = state.objection;
           if (!objection) return advance(state, now, timings);
@@ -1325,7 +1423,7 @@ export function createCourt(
           );
         }
         case "crossExam":
-          return submitAnswer(state, "...");
+          return submitAnswer(state, "...", now, timings);
         case "punishment":
           return applyMercy(state, false, now, timings);
         default:
@@ -1363,25 +1461,69 @@ export function createCourt(
   };
 }
 
-function submitAnswer(state: CourtState, text: string): CourtState {
-  return addEffect(
-    toStage(
-      {
-        ...note(state, defendantOf(state), "Answer", text),
-        crossAnswer: text,
-      },
-      "crossReact",
-      null,
-    ),
-    "crossReact",
+function fileReply(
+  state: CourtState,
+  playerId: PlayerId,
+  text: string,
+  now: number,
+  timings: CourtTimings,
+): CourtState {
+  const noted = {
+    ...note(state, playerId, "Reply", text),
+    turn: state.turn + 1,
+    lastSpeech: { by: playerId, text },
+  };
+  // Checked here as well as by the AI, so it still holds if the AI is down.
+  if (SERIOUS.test(text)) return dismissSerious(noted, now, timings);
+  return addEffect(toStage(noted, "replyReact", null), "reply", {
+    ...names(state),
+    accusation: state.accusation,
+    defense: state.defense,
+    speakerRole: playerId === prosecutorOf(state) ? "prosecutor" : "defendant",
+  });
+}
+
+function dismissSerious(
+  state: CourtState,
+  now: number,
+  timings: CourtTimings,
+): CourtState {
+  return closeCase(
     {
-      ...names(state),
-      accusation: state.accusation,
-      defense: state.defense,
-      question: state.crossQuestion,
-      answer: text,
+      ...note(state, "judge", "Dismissed", FALLBACK.dismissed),
+      reaction: {
+        line: FALLBACK.dismissed,
+        crowd: "aww",
+        judgeMood: "pleased",
+      },
     },
+    now,
+    timings,
+    "dismissed",
   );
+}
+
+function submitAnswer(
+  state: CourtState,
+  text: string,
+  now: number,
+  timings: CourtTimings,
+): CourtState {
+  const by = defendantOf(state);
+  const noted = {
+    ...note(state, by, "Answer", text),
+    turn: state.turn + 1,
+    lastSpeech: { by, text },
+    crossAnswer: text,
+  };
+  if (SERIOUS.test(text)) return dismissSerious(noted, now, timings);
+  return addEffect(toStage(noted, "crossReact", null), "crossReact", {
+    ...names(state),
+    accusation: state.accusation,
+    defense: state.defense,
+    question: state.crossQuestion,
+    answer: text,
+  });
 }
 
 export const court = createCourt();
