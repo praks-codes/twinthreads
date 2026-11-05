@@ -10,12 +10,24 @@ This came from the [design direction](design-direction.md), which holds the full
 
 ## What each case includes
 
-Setup (first case only), accusation, defense, hearing, objections with an argument and a ruling, cross-examination, the judge deciding, wax seal, verdict, punishment, pardon or no mercy, and a shareable case card. Roles swap each case.
+Setup (first case only), five turns, objections with an argument and a ruling, the judge deciding, wax seal, verdict, punishment, pardon or no mercy, and a shareable case card. Roles swap each case.
+
+## Turns
+
+Each case has at most 5 turns, shown on both screens along with how many each player has left:
+
+1. The prosecutor accuses
+2. The defendant defends
+3. The prosecutor replies
+4. The defendant replies
+5. The judge cross-examines the defendant, using everything said so far
+
+Cross-examination always happens. A player can rest their case on a reply turn, which uses up that turn, and running out of time does the same.
 
 ## Rules from the first test
 
-- **Judge and cross-examination:** both partners must agree before the game starts, and either changing their mind clears the other's approval. If time runs out on a disagreement, the Court picks one partner's choice and says so.
-- **Objections:** only the side that didn't just speak can object, so the prosecutor objects at the hearing and after cross-examination. After a ruling the game moves to the next step, so each statement can only be objected to once.
+- **Judge:** both partners must agree before the game starts, and either changing their mind clears the other's approval. If time runs out on a disagreement, the Court picks one partner's choice and says so.
+- **Objections:** only the side that didn't just speak can object, so a player can object to what the other side just said. After a ruling the game moves to the next step, so each statement can only be objected to once.
 - **Court record:** both players can always read everything said so far, across all cases. Lawyer suggestions stay private until used.
 - **Wax seal:** the verdict, score, moods and meter stay hidden until the seal breaks.
 
