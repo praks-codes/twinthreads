@@ -93,6 +93,10 @@ async function startCase(url: string) {
   b.client.emit("room:ready", { ready: true });
   await a.until((game) => game.stage === "setup");
   await b.until((game) => game.stage === "setup");
+  a.act("setup", { judge: "dramatic" });
+  b.act("setup", { judge: "dramatic" });
+  await a.until((game) => game.setupAgreed);
+  await b.until((game) => game.setupAgreed);
   a.act("continue");
   await a.until((game) => game.haveContinued);
   b.act("continue");

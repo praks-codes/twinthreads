@@ -31,7 +31,8 @@ export const TOTAL_CASES = 3;
 export const MAX_STATEMENT = 140;
 export const MAX_CAPTION = 60;
 export const OBJECTIONS_PER_GAME = 3;
-export const MOVE_TURNS = 4;
+/** Each player gets one turn per round of tipping the scales. */
+export const MOVE_TURNS = 2;
 export const CANVAS_WIDTH = 340;
 export const CANVAS_HEIGHT = 150;
 const MAX_STROKE_NUMBERS = 1200;
@@ -58,7 +59,7 @@ export interface CourtTimings {
 }
 
 export const DEFAULT_TIMINGS: CourtTimings = {
-  setupMs: 60_000,
+  setupMs: 90_000,
   writeMs: 90_000,
   moveMs: 60_000,
   showMs: 20_000,
@@ -160,6 +161,20 @@ export interface CaseRecord {
   exhibit: MoveRecord | null;
 }
 
+/** One line of the court record, which both players can always read back. */
+export interface RecordEntry {
+  caseNumber: number;
+  speaker: PlayerId | "judge";
+  label: string;
+  text: string;
+  strokes?: number[][];
+}
+
+export interface SetupChoice {
+  judge: JudgeId | null;
+  crossExam: boolean;
+}
+
 export interface CourtState {
   playerIds: [PlayerId, PlayerId];
   stage: Stage;
@@ -167,6 +182,7 @@ export interface CourtState {
   caseNumber: number;
   judge: JudgeId;
   crossExamOn: boolean;
+  setupChoices: Record<PlayerId, SetupChoice>;
   scores: Record<PlayerId, number>;
   objectionsLeft: Record<PlayerId, number>;
   /** 0 to 100, and above 50 favours this case's prosecutor. */
@@ -176,6 +192,7 @@ export interface CourtState {
   autoPicked: boolean;
   lawyerStatus: "idle" | "pending" | "ready";
   lawyerSuggestions: Suggestion[];
+  moveRound: number;
   turn: number;
   usedMoves: Record<PlayerId, MoveKind[]>;
   moveLog: MoveRecord[];
@@ -195,9 +212,11 @@ export interface CourtState {
   crossAnswer: string | null;
   taps: Record<PlayerId, number>;
   verdict: VerdictRecord | null;
+  /** Held back until the seal is broken, so nothing gives the verdict away. */
+  verdictReaction: Reaction | null;
   ending: CaseRecord["ending"] | null;
   take: number | null;
-  transcript: string[];
+  record: RecordEntry[];
   cases: CaseRecord[];
   emotes: Record<PlayerId, { emoji: string; count: number }>;
   continueVotes: PlayerId[];
@@ -239,6 +258,8 @@ export interface CourtView {
   defendant: PlayerId;
   judge: JudgeId;
   crossExamOn: boolean;
+  setupChoices: Record<PlayerId, SetupChoice>;
+  setupAgreed: boolean;
   scores: Record<PlayerId, number>;
   myObjections: number;
   canObject: boolean;
@@ -251,6 +272,8 @@ export interface CourtView {
   autoPicked: boolean;
   lawyerStatus: CourtState["lawyerStatus"];
   lawyerSuggestions: Suggestion[];
+  moveRound: number;
+  moveRounds: number;
   turn: number;
   mover: PlayerId | null;
   myUsedMoves: MoveKind[];
@@ -266,6 +289,7 @@ export interface CourtView {
   ending: CourtState["ending"];
   take: number | null;
   latestCase: CaseRecord | null;
+  record: RecordEntry[];
   emotes: CourtState["emotes"];
   /** True while the AI is working on something this stage is waiting for. */
   judgeThinking: boolean;
@@ -341,6 +365,121 @@ function toStage(
   return { ...state, stage, deadline, continueVotes: [] };
 }
 
+function note(
+  state: CourtState,
+  speaker: RecordEntry["speaker"],
+  label: string,
+  text: string,
+  strokes?: number[][],
+): CourtState {
+  const entry: RecordEntry = {
+    caseNumber: state.caseNumber,
+    speaker,
+    label,
+    text,
+    ...(strokes && strokes.length > 0 ? { strokes } : {}),
+  };
+  return { ...state, record: [...state.record, entry] };
+}
+
+function setupAgreed({ playerIds: [a, b], setupChoices }: CourtState): boolean {
+  const first = setupChoices[a];
+  const second = setupChoices[b];
+  return (
+    !!first?.judge &&
+    first.judge === second?.judge &&
+    first.crossExam === second.crossExam
+  );
+}
+
+/** If time runs out on a disagreement, the Court picks one partner's choice. */
+function resolveSetup(state: CourtState, rng: Rng): CourtState {
+  const [a, b] = state.playerIds;
+  const first = state.setupChoices[a];
+  const second = state.setupChoices[b];
+  const judges = [first?.judge, second?.judge].filter(
+    (judge): judge is JudgeId => !!judge,
+  );
+  const judge = judges.length > 0 ? pick(judges, rng) : state.judge;
+  const crossExamOn = pick(
+    [first?.crossExam ?? true, second?.crossExam ?? true],
+    rng,
+  );
+  const next = { ...state, judge, crossExamOn };
+  return setupAgreed(state)
+    ? next
+    : note(
+        next,
+        "judge",
+        "Setup",
+        "You two couldn't agree, so the Court flipped a coin.",
+      );
+}
+
+function fileAccusation(
+  state: CourtState,
+  text: string,
+  autoPicked: boolean,
+  now: number,
+  timings: CourtTimings,
+): CourtState {
+  return toStage(
+    note(
+      { ...state, accusation: text, autoPicked },
+      prosecutorOf(state),
+      autoPicked ? "Accusation, picked by the Court" : "Accusation",
+      text,
+    ),
+    "defend",
+    now + timings.writeMs,
+  );
+}
+
+function fileDefense(
+  state: CourtState,
+  text: string,
+  autoPicked: boolean,
+  now: number,
+  timings: CourtTimings,
+): CourtState {
+  return startHearing(
+    note(
+      { ...state, defense: text, autoPicked },
+      defendantOf(state),
+      autoPicked ? "Defense, picked by the Court" : "Defense",
+      text,
+    ),
+    now,
+    timings,
+  );
+}
+
+const MOVE_ROUNDS = (state: CourtState) => (state.crossExamOn ? 2 : 1);
+
+function moveLabel(move: MoveRecord): string {
+  if (move.kind === "witness") {
+    return `Witness: ${WITNESSES[move.option]?.name ?? "A gummy"}`;
+  }
+  if (move.kind === "bribe") {
+    return `Bribe: ${BRIBES[move.option]?.name ?? "Something"}`;
+  }
+  return "Exhibit A";
+}
+
+function courtTranscript(state: CourtState): string[] {
+  return state.record
+    .filter((entry) => entry.caseNumber === state.caseNumber)
+    .map((entry) => {
+      const speaker =
+        entry.speaker === "judge"
+          ? "Judge"
+          : entry.speaker === prosecutorOf(state)
+            ? "Prosecutor"
+            : "Defendant";
+      return `${speaker} (${entry.label}): ${entry.text}`;
+    });
+}
+
 function neutralMoods(state: CourtState): Record<PlayerId, Mood> {
   const [a, b] = state.playerIds;
   return { [a]: "neutral", [b]: "neutral" };
@@ -390,7 +529,7 @@ function startHearing(
   if (SERIOUS.test(text)) {
     return closeCase(
       {
-        ...state,
+        ...note(state, "judge", "Dismissed", FALLBACK.dismissed),
         reaction: {
           line: FALLBACK.dismissed,
           crowd: "aww",
@@ -427,7 +566,10 @@ function afterMoves(
   now: number,
   timings: CourtTimings,
 ): CourtState {
-  if (!state.crossExamOn) return startClosing(state, now, timings);
+  // The second round of tipping the scales comes after cross-examination.
+  if (!state.crossExamOn || state.moveRound >= MOVE_ROUNDS(state)) {
+    return startClosing(state, now, timings);
+  }
   return addEffect(
     toStage(
       {
@@ -471,13 +613,23 @@ function startDeliberating(state: CourtState): CourtState {
       MAX_METER_STEP,
     ),
   );
-  const next = { ...state, meter };
+  const next = note(
+    note(
+      { ...state, meter },
+      prosecutorOf(state),
+      "Closing taps",
+      String(prosecutorTaps),
+    ),
+    defendantOf(state),
+    "Closing taps",
+    String(defendantTaps),
+  );
   return addEffect(toStage(next, "deliberating", null), "verdict", {
     ...names(state),
     meter,
     accusation: state.accusation,
     defense: state.defense,
-    transcript: state.transcript,
+    transcript: courtTranscript(next),
   });
 }
 
@@ -499,6 +651,7 @@ function startNextCase(
     autoPicked: false,
     lawyerStatus: "idle",
     lawyerSuggestions: [],
+    moveRound: 1,
     turn: 0,
     usedMoves: { [a]: [], [b]: [] },
     moveLog: [],
@@ -511,9 +664,9 @@ function startNextCase(
     crossAnswer: null,
     taps: { [a]: 0, [b]: 0 },
     verdict: null,
+    verdictReaction: null,
     ending: null,
     take: null,
-    transcript: [],
     pending: [],
   };
   return toStage(next, "accuse", now + timings.writeMs);
@@ -526,8 +679,18 @@ function advance(
   timings: CourtTimings,
 ): CourtState {
   switch (state.stage) {
-    case "setup":
-      return toStage(state, "accuse", now + timings.writeMs);
+    case "setup": {
+      const choice = state.setupChoices[state.playerIds[0]];
+      return toStage(
+        {
+          ...state,
+          judge: choice?.judge ?? state.judge,
+          crossExamOn: choice?.crossExam ?? state.crossExamOn,
+        },
+        "accuse",
+        now + timings.writeMs,
+      );
+    }
     case "hearing":
       return startMoveTurn(state, now, timings);
     case "moveReact":
@@ -541,11 +704,21 @@ function advance(
       );
     }
     case "crossReact":
-      return startClosing(state, now, timings);
+      return startMoveTurn(
+        { ...state, moveRound: state.moveRound + 1, turn: 0 },
+        now,
+        timings,
+      );
     case "sealed":
-      return toStage(state, "verdict", now + timings.verdictMs);
+      return toStage(revealVerdict(state), "verdict", now + timings.verdictMs);
     case "verdict":
-      return toStage(state, "punishment", now + timings.mercyMs);
+      return toStage(
+        state.verdict
+          ? note(state, "judge", "Punishment", state.verdict.punishment)
+          : state,
+        "punishment",
+        now + timings.mercyMs,
+      );
     case "aftermath":
       return closeCase(state, now, timings, state.ending ?? "punished");
     case "caseFile":
@@ -553,6 +726,28 @@ function advance(
     default:
       return state;
   }
+}
+
+// The score, moods and meter all change here, so the seal really hides the result.
+function revealVerdict(state: CourtState): CourtState {
+  const { verdict } = state;
+  if (!verdict) return state;
+  const { winner, loser, guilty } = verdict;
+  return note(
+    {
+      ...state,
+      // So the meter never shows the loser ahead once the verdict is in.
+      meter: guilty
+        ? Math.max(state.meter, 100 - VERDICT_METER)
+        : Math.min(state.meter, VERDICT_METER),
+      scores: { ...state.scores, [winner]: (state.scores[winner] ?? 0) + 1 },
+      moods: { [winner]: "laugh", [loser]: "cry" },
+      reaction: state.verdictReaction,
+    },
+    "judge",
+    guilty ? "Guilty" : "Not guilty",
+    verdict.line,
+  );
 }
 
 function applyMercy(
@@ -566,9 +761,15 @@ function applyMercy(
   const moods: Record<PlayerId, Mood> = pardon
     ? { [verdict.winner]: "love", [verdict.loser]: "love" }
     : { [verdict.winner]: "smug", [verdict.loser]: "cry" };
+  const noted = note(
+    state,
+    verdict.winner,
+    "Mercy",
+    pardon ? "Pardoned with a kiss." : "No mercy. The punishment stands.",
+  );
   return toStage(
     {
-      ...state,
+      ...noted,
       ending: pardon ? "pardoned" : "punished",
       moods,
       reaction: {
@@ -599,7 +800,8 @@ function canObject(state: CourtState, playerId: PlayerId): boolean {
   if ((state.objectionsLeft[playerId] ?? 0) <= 0 || state.deadline === null) {
     return false;
   }
-  if (state.stage === "hearing") return true;
+  // Only the side that didn't just speak can object to what was said.
+  if (state.stage === "hearing") return prosecutorOf(state) === playerId;
   if (state.stage === "moveReact") return state.currentMove?.by !== playerId;
   if (state.stage === "crossReact") return prosecutorOf(state) === playerId;
   return false;
@@ -654,7 +856,9 @@ function parseCourtAction(input: unknown): Result<CourtAction, GameError> {
       return ok({ type, payload: {} });
     case "setup": {
       const { judge, crossExam } = payload;
-      if (judge !== undefined && !(String(judge) in JUDGES)) return bad;
+      if (judge !== undefined && !Object.hasOwn(JUDGES, String(judge))) {
+        return bad;
+      }
       if (crossExam !== undefined && typeof crossExam !== "boolean") return bad;
       return ok({
         type,
@@ -811,7 +1015,7 @@ function applyEffectOutput(
       if (reaction?.serious) {
         return closeCase(
           {
-            ...state,
+            ...note(state, "judge", "Dismissed", reaction.line),
             reaction: {
               line: reaction.line,
               crowd: "aww",
@@ -826,7 +1030,7 @@ function applyEffectOutput(
       const line = reaction?.line ?? pick(FALLBACK.hearing, rng);
       return toStage(
         {
-          ...state,
+          ...note(state, "judge", "Judge", line),
           meter: bumpMeter(state, reaction?.score ?? 0),
           moods: reaction
             ? setMoods(state, reaction.prosecutorMood, reaction.defendantMood)
@@ -836,7 +1040,6 @@ function applyEffectOutput(
             crowd: reaction?.crowd ?? "gasp",
             judgeMood: reaction?.judgeMood ?? JUDGES[state.judge].mood,
           },
-          transcript: [...state.transcript, `Judge on the opening: ${line}`],
         },
         "hearing",
         now + timings.showMs,
@@ -850,9 +1053,15 @@ function applyEffectOutput(
       const score = reaction?.score ?? backup.delta;
       const says = cleanText(raw.says, 200) ?? move.says;
       const helpsProsecutor = move.by === prosecutorOf(state) ? score : -score;
+      const said = note(
+        note(state, move.by, moveLabel(move), says, move.strokes),
+        "judge",
+        "Judge",
+        line,
+      );
       return toStage(
         {
-          ...state,
+          ...said,
           meter: bumpMeter(state, helpsProsecutor),
           currentMove: { ...move, says },
           moveLog: state.moveLog.map((m) => (m === move ? { ...m, says } : m)),
@@ -864,10 +1073,6 @@ function applyEffectOutput(
             crowd: reaction?.crowd ?? backup.crowd,
             judgeMood: reaction?.judgeMood ?? "stern",
           },
-          transcript: [
-            ...state.transcript,
-            `${move.by === prosecutorOf(state) ? "Prosecutor" : "Defendant"} used ${move.kind}: "${says}". Judge: ${line}`,
-          ],
         },
         "moveReact",
         now + timings.showMs,
@@ -885,7 +1090,7 @@ function applyEffectOutput(
         reaction?.line ?? (sustained ? FALLBACK.sustained : FALLBACK.overruled);
       return toStage(
         {
-          ...state,
+          ...note(state, "judge", sustained ? "Sustained" : "Overruled", line),
           meter: bumpMeter(
             state,
             objection.by === prosecutorOf(state) ? step : -step,
@@ -902,10 +1107,6 @@ function applyEffectOutput(
               judgeMood: reaction?.judgeMood ?? "stern",
             },
           },
-          transcript: [
-            ...state.transcript,
-            `Objection (${OBJECTION_GROUNDS[objection.ground] ?? ""}): "${objection.argument}". ${sustained ? "Sustained" : "Overruled"}.`,
-          ],
         },
         "ruling",
         now + timings.showMs,
@@ -915,7 +1116,10 @@ function applyEffectOutput(
       const question =
         cleanText(raw.question, 200) ?? pick(FALLBACK.crossQuestions, rng);
       return toStage(
-        { ...state, crossQuestion: question },
+        {
+          ...note(state, "judge", "Cross-examination", question),
+          crossQuestion: question,
+        },
         "crossExam",
         now + timings.answerMs,
       );
@@ -924,7 +1128,7 @@ function applyEffectOutput(
       const line = reaction?.line ?? pick(FALLBACK.crossReact, rng);
       return toStage(
         {
-          ...state,
+          ...note(state, "judge", "Judge", line),
           meter: bumpMeter(state, reaction?.score ?? 0),
           moods: reaction
             ? setMoods(state, reaction.prosecutorMood, reaction.defendantMood)
@@ -934,10 +1138,6 @@ function applyEffectOutput(
             crowd: reaction?.crowd ?? "gasp",
             judgeMood: reaction?.judgeMood ?? "stern",
           },
-          transcript: [
-            ...state.transcript,
-            `Cross-examination. Q: ${state.crossQuestion ?? ""} A: ${state.crossAnswer ?? ""}. Judge: ${line}`,
-          ],
         },
         "crossReact",
         now + timings.showMs,
@@ -971,16 +1171,7 @@ function applyEffectOutput(
         {
           ...state,
           verdict,
-          // So the meter never shows the loser ahead once the verdict is in.
-          meter: guilty
-            ? Math.max(state.meter, 100 - VERDICT_METER)
-            : Math.min(state.meter, VERDICT_METER),
-          scores: {
-            ...state.scores,
-            [winner]: (state.scores[winner] ?? 0) + 1,
-          },
-          moods: { [winner]: "laugh", [loser]: "cry" },
-          reaction: {
+          verdictReaction: {
             line: verdict.line,
             crowd: reaction?.crowd ?? (guilty ? "boo" : "aww"),
             judgeMood: reaction?.judgeMood ?? "stern",
@@ -1045,6 +1236,10 @@ export function createCourt(
         caseNumber: 1,
         judge: "tired",
         crossExamOn: true,
+        setupChoices: {
+          [a]: { judge: null, crossExam: true },
+          [b]: { judge: null, crossExam: true },
+        },
         scores: { [a]: 0, [b]: 0 },
         objectionsLeft: { [a]: OBJECTIONS_PER_GAME, [b]: OBJECTIONS_PER_GAME },
         meter: 50,
@@ -1053,6 +1248,7 @@ export function createCourt(
         autoPicked: false,
         lawyerStatus: "idle",
         lawyerSuggestions: [],
+        moveRound: 1,
         turn: 0,
         usedMoves: { [a]: [], [b]: [] },
         moveLog: [],
@@ -1065,9 +1261,10 @@ export function createCourt(
         crossAnswer: null,
         taps: { [a]: 0, [b]: 0 },
         verdict: null,
+        verdictReaction: null,
         ending: null,
         take: null,
-        transcript: [],
+        record: [],
         cases: [],
         emotes: {},
         continueVotes: [],
@@ -1099,13 +1296,28 @@ export function createCourt(
         }
         case "setup":
           if (state.stage !== "setup") return WRONG_TIME();
+          // Changing anything means both partners have to agree again.
           return done({
             ...state,
-            judge: action.payload.judge ?? state.judge,
-            crossExamOn: action.payload.crossExam ?? state.crossExamOn,
+            setupChoices: {
+              ...state.setupChoices,
+              [playerId]: {
+                judge:
+                  action.payload.judge ??
+                  state.setupChoices[playerId]?.judge ??
+                  null,
+                crossExam:
+                  action.payload.crossExam ??
+                  state.setupChoices[playerId]?.crossExam ??
+                  true,
+              },
+            },
             continueVotes: [],
           });
         case "continue": {
+          if (state.stage === "setup" && !setupAgreed(state)) {
+            return rejected("NOT_AGREED", "You both need to agree first.");
+          }
           if (
             !CONTINUE_STAGES.includes(state.stage) ||
             state.deadline === null
@@ -1125,11 +1337,7 @@ export function createCourt(
           if (state.stage !== "accuse") return WRONG_TIME();
           if (playerId !== prosecutor) return NOT_YOURS();
           return done(
-            toStage(
-              { ...state, accusation: action.payload.text },
-              "defend",
-              now + timings.writeMs,
-            ),
+            fileAccusation(state, action.payload.text, false, now, timings),
           );
         case "askLawyer": {
           const answering = state.stage === "crossExam";
@@ -1150,11 +1358,7 @@ export function createCourt(
           if (state.stage !== "defend") return WRONG_TIME();
           if (playerId !== defendant) return NOT_YOURS();
           return done(
-            startHearing(
-              { ...state, defense: action.payload.text },
-              now,
-              timings,
-            ),
+            fileDefense(state, action.payload.text, false, now, timings),
           );
         case "move": {
           if (state.stage !== "moves") return WRONG_TIME();
@@ -1210,7 +1414,14 @@ export function createCourt(
           const mover = state.turn % 2 === 0 ? prosecutor : defendant;
           if (playerId !== mover) return NOT_YOURS();
           return done(
-            startMoveTurn({ ...state, turn: state.turn + 1 }, now, timings),
+            startMoveTurn(
+              {
+                ...note(state, playerId, "Tip the scales", "Rested for now."),
+                turn: state.turn + 1,
+              },
+              now,
+              timings,
+            ),
           );
         }
         case "object": {
@@ -1249,7 +1460,19 @@ export function createCourt(
           };
           return done(
             addEffect(
-              toStage({ ...state, objection: updated }, "ruling", null),
+              toStage(
+                {
+                  ...note(
+                    state,
+                    playerId,
+                    `Objection: ${OBJECTION_GROUNDS[updated.ground] ?? ""}`,
+                    updated.argument,
+                  ),
+                  objection: updated,
+                },
+                "ruling",
+                null,
+              ),
               "ruling",
               {
                 ...names(state),
@@ -1297,7 +1520,14 @@ export function createCourt(
           }
           if (playerId !== state.verdict?.loser) return NOT_YOURS();
           return done({
-            ...state,
+            ...note(
+              state,
+              playerId,
+              "Reaction",
+              action.payload.option === 0
+                ? "Accepted, with dignity."
+                : "Sulked dramatically.",
+            ),
             take: action.payload.option,
             moods: {
               ...state.moods,
@@ -1320,11 +1550,15 @@ export function createCourt(
         defendant,
         judge: state.judge,
         crossExamOn: state.crossExamOn,
+        setupChoices: state.setupChoices,
+        setupAgreed: setupAgreed(state),
         scores: state.scores,
         myObjections: state.objectionsLeft[playerId] ?? 0,
         canObject: canObject(state, playerId),
         canContinue:
-          CONTINUE_STAGES.includes(state.stage) && state.deadline !== null,
+          CONTINUE_STAGES.includes(state.stage) &&
+          state.deadline !== null &&
+          (state.stage !== "setup" || setupAgreed(state)),
         haveContinued: state.continueVotes.includes(playerId),
         meter: liveMeter(state),
         accusation: state.accusation,
@@ -1333,6 +1567,8 @@ export function createCourt(
         lawyerStatus: isDefendant ? state.lawyerStatus : "idle",
         // A defense idea is private until the defendant actually uses one.
         lawyerSuggestions: isDefendant ? state.lawyerSuggestions : [],
+        moveRound: state.moveRound,
+        moveRounds: MOVE_ROUNDS(state),
         turn: state.turn,
         mover:
           state.stage === "moves"
@@ -1349,10 +1585,12 @@ export function createCourt(
         crossAnswer: state.crossAnswer,
         taps: state.taps,
         tapWindowMs: timings.closingTapMs,
-        verdict: state.verdict,
+        // Hidden until the seal is broken, even though the server already knows.
+        verdict: state.stage === "sealed" ? null : state.verdict,
         ending: state.ending,
         take: state.take,
         latestCase: state.cases[state.cases.length - 1] ?? null,
+        record: state.record,
         emotes: state.emotes,
         judgeThinking: state.pending.some((effect) => effect.kind !== "lawyer"),
       };
@@ -1363,38 +1601,44 @@ export function createCourt(
 
     onTimeout(state, now, rng) {
       switch (state.stage) {
+        case "setup": {
+          const resolved = resolveSetup(state, rng);
+          return toStage(resolved, "accuse", now + timings.writeMs);
+        }
         case "accuse":
-          return toStage(
-            {
-              ...state,
-              accusation: pick(READY_ACCUSATIONS, rng),
-              autoPicked: true,
-            },
-            "defend",
-            now + timings.writeMs,
+          return fileAccusation(
+            state,
+            pick(READY_ACCUSATIONS, rng),
+            true,
+            now,
+            timings,
           );
         case "defend":
-          return startHearing(
+          return fileDefense(
+            state,
+            pick(EXAMPLE_DEFENSES, rng),
+            true,
+            now,
+            timings,
+          );
+        case "moves": {
+          const mover =
+            state.turn % 2 === 0 ? prosecutorOf(state) : defendantOf(state);
+          return startMoveTurn(
             {
-              ...state,
-              defense: pick(EXAMPLE_DEFENSES, rng),
-              autoPicked: true,
+              ...note(state, mover, "Tip the scales", "Ran out of time."),
+              turn: state.turn + 1,
             },
             now,
             timings,
           );
-        case "moves":
-          return startMoveTurn(
-            { ...state, turn: state.turn + 1 },
-            now,
-            timings,
-          );
+        }
         case "objection": {
           const objection = state.objection;
           if (!objection) return advance(state, now, timings);
           return toStage(
             {
-              ...state,
+              ...note(state, "judge", "Overruled", FALLBACK.overruled),
               meter: bumpMeter(
                 state,
                 objection.by === prosecutorOf(state)
@@ -1458,7 +1702,14 @@ export function createCourt(
 
 function submitAnswer(state: CourtState, text: string): CourtState {
   return addEffect(
-    toStage({ ...state, crossAnswer: text }, "crossReact", null),
+    toStage(
+      {
+        ...note(state, defendantOf(state), "Answer", text),
+        crossAnswer: text,
+      },
+      "crossReact",
+      null,
+    ),
     "crossReact",
     {
       ...names(state),

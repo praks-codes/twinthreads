@@ -41,6 +41,15 @@ function bothContinue(session: GameSession<CourtState>) {
 }
 
 /** Answers every waiting AI request, with null meaning the AI failed. */
+function agree(session: GameSession<CourtState>, crossExam = true) {
+  const choice = { judge: "tired", crossExam };
+  return act(act(session, A, "setup", choice), B, "setup", choice);
+}
+
+function started() {
+  return bothContinue(agree(begin()));
+}
+
 function settle(
   session: GameSession<CourtState>,
   output: unknown = null,
@@ -54,44 +63,76 @@ function settle(
 }
 
 function toHearing(text = "I did it for us.") {
-  let session = bothContinue(begin());
+  let session = started();
   session = act(session, A, "accuse", { text: "Stole the duvet." });
   return act(session, B, "defend", { text });
 }
 
 describe("Court setup", () => {
-  it("starts on setup, then both players start the first case", () => {
+  it("needs both partners to agree before the first case starts", () => {
     const session = begin();
     expect(session.state.stage).toBe("setup");
-    const once = act(session, A, "continue");
+    const reject = (s: GameSession<CourtState>, player: string) =>
+      applyAction(game, s, player, { type: "continue", payload: {} }, 1);
+    expect(reject(session, A).ok).toBe(false);
+
+    const onePicked = act(session, A, "setup", { judge: "dramatic" });
+    expect(reject(onePicked, A).ok).toBe(false);
+    expect(viewFor(game, onePicked, B).setupAgreed).toBe(false);
+
+    const disagree = act(onePicked, B, "setup", { judge: "romantic" });
+    expect(reject(disagree, B).ok).toBe(false);
+
+    const agreed = act(disagree, A, "setup", { judge: "romantic" });
+    expect(viewFor(game, agreed, A).setupAgreed).toBe(true);
+    const once = act(agreed, A, "continue");
     expect(once.state.stage).toBe("setup");
-    expect(act(once, B, "continue").state.stage).toBe("accuse");
+    const begun = act(once, B, "continue");
+    expect(begun.state.stage).toBe("accuse");
+    expect(begun.state.judge).toBe("romantic");
   });
 
-  it("lets a player choose the judge and turn off cross-examination", () => {
-    const session = act(begin(), B, "setup", {
-      judge: "dramatic",
-      crossExam: false,
-    });
-    expect(session.state.judge).toBe("dramatic");
+  it("makes them agree on cross-examination too", () => {
+    const choice = { judge: "tired" };
+    let session = act(act(begin(), A, "setup", choice), B, "setup", choice);
+    session = act(session, A, "setup", { crossExam: false });
+    expect(viewFor(game, session, B).setupAgreed).toBe(false);
+    session = bothContinue(act(session, B, "setup", { crossExam: false }));
     expect(session.state.crossExamOn).toBe(false);
   });
 
+  it("clears an approval when either partner changes their mind", () => {
+    let session = act(agree(begin()), A, "continue");
+    session = act(session, B, "setup", { judge: "dramatic" });
+    expect(viewFor(game, session, A).haveContinued).toBe(false);
+  });
+
+  it("picks one partner's choice if time runs out on a disagreement", () => {
+    let session = act(begin(), A, "setup", { judge: "dramatic" });
+    session = act(session, B, "setup", { judge: "romantic" });
+    session = applyTimeout(game, session, session.state.deadline ?? 0);
+    expect(session.state.stage).toBe("accuse");
+    expect(["dramatic", "romantic"]).toContain(session.state.judge);
+    expect(session.state.record[0]?.text).toContain("coin");
+  });
+
   it("rejects a judge that doesn't exist", () => {
-    const result = applyAction(
-      game,
-      begin(),
-      A,
-      { type: "setup", payload: { judge: "toString-ish" } },
-      1,
-    );
-    expect(result.ok).toBe(false);
+    for (const judge of ["nobody", "toString"]) {
+      const result = applyAction(
+        game,
+        begin(),
+        A,
+        { type: "setup", payload: { judge } },
+        1,
+      );
+      expect(result.ok).toBe(false);
+    }
   });
 });
 
 describe("statements", () => {
   it("only lets the prosecutor accuse and the defendant defend", () => {
-    const session = bothContinue(begin());
+    const session = started();
     expect(
       applyAction(
         game,
@@ -114,7 +155,7 @@ describe("statements", () => {
   });
 
   it("rejects empty and overlong text", () => {
-    const session = bothContinue(begin());
+    const session = started();
     for (const text of ["   ", "x".repeat(141), 5, null]) {
       const result = applyAction(
         game,
@@ -142,7 +183,7 @@ describe("statements", () => {
   });
 
   it("picks for a player who runs out of time", () => {
-    const session = bothContinue(begin());
+    const session = started();
     const deadline = session.state.deadline ?? 0;
     const timedOut = applyTimeout(game, session, deadline);
     expect(timedOut.state.accusation).toEqual(expect.any(String));
@@ -217,7 +258,7 @@ describe("the AI's replies", () => {
 
 describe("the AI lawyer", () => {
   it("keeps suggestions private to the defendant", () => {
-    let session = bothContinue(begin());
+    let session = started();
     session = act(session, A, "accuse", { text: "Stole the duvet." });
     session = act(session, B, "askLawyer");
     session = settle(session, {
@@ -232,14 +273,14 @@ describe("the AI lawyer", () => {
   });
 
   it("offers backup suggestions when the AI fails", () => {
-    let session = bothContinue(begin());
+    let session = started();
     session = act(session, A, "accuse", { text: "Stole the duvet." });
     session = settle(act(session, B, "askLawyer"), null);
     expect(viewFor(game, session, B).lawyerSuggestions).toHaveLength(3);
   });
 
   it("hides the defense from the prosecutor until it's filed", () => {
-    let session = bothContinue(begin());
+    let session = started();
     session = act(session, A, "accuse", { text: "Stole the duvet." });
     expect(viewFor(game, session, A).defense).toBeNull();
     session = act(session, B, "defend", { text: "Was asleep." });
@@ -251,14 +292,14 @@ describe("objections", () => {
   it("makes the objector argue, then returns to the case after a ruling", () => {
     let session = settle(toHearing());
     const before = session.state.meter;
-    session = act(session, B, "object");
+    session = act(session, A, "object");
     expect(session.state.stage).toBe("objection");
-    expect(viewFor(game, session, B).objection?.by).toBe(B);
-    session = act(session, B, "argue", { ground: 1, argument: "All lies." });
+    expect(viewFor(game, session, B).objection?.by).toBe(A);
+    session = act(session, A, "argue", { ground: 1, argument: "All lies." });
     expect(session.state.stage).toBe("ruling");
     session = settle(session, { line: "Fine.", sustained: true });
     expect(session.state.objection?.sustained).toBe(true);
-    expect(session.state.meter).toBe(before - 6);
+    expect(session.state.meter).toBe(before + 6);
     session = bothContinue(session);
     expect(session.state.stage).toBe("hearing");
     expect(session.state.objection).toBeNull();
@@ -273,6 +314,18 @@ describe("objections", () => {
     }
     expect(viewFor(game, session, A).canObject).toBe(false);
     expect(applyAction(game, session, A, { type: "object" }, 1).ok).toBe(false);
+  });
+
+  it("only lets the side that didn't just speak object", () => {
+    let session = settle(toHearing());
+    expect(viewFor(game, session, A).canObject).toBe(true);
+    expect(viewFor(game, session, B).canObject).toBe(false);
+    expect(applyAction(game, session, B, { type: "object" }, 1).ok).toBe(false);
+
+    session = bothContinue(session);
+    session = act(session, A, "move", { kind: "bribe", option: 0 });
+    session = settle(session);
+    expect(viewFor(game, session, A).canObject).toBe(false);
     expect(viewFor(game, session, B).canObject).toBe(true);
   });
 
@@ -300,6 +353,12 @@ describe("moves", () => {
     session = bothContinue(settle(session));
     expect(viewFor(game, session, B).mover).toBe(B);
     session = act(session, B, "pass");
+    // Cross-examination comes next, then a second round of moves.
+    session = settle(session, { question: "Why?" });
+    session = act(session, B, "answer", { text: "Because." });
+    session = bothContinue(settle(session));
+    expect(session.state.stage).toBe("moves");
+    expect(session.state.moveRound).toBe(2);
     const again = applyAction(
       game,
       session,
@@ -308,6 +367,18 @@ describe("moves", () => {
       1,
     );
     expect(again.ok).toBe(false);
+    session = act(session, A, "move", { kind: "witness", option: 0 });
+    expect(session.state.stage).toBe("moveReact");
+  });
+
+  it("only offers one round of moves without cross-examination", () => {
+    let session = bothContinue(agree(begin(), false));
+    session = act(session, A, "accuse", { text: "Stole the duvet." });
+    session = act(session, B, "defend", { text: "Was asleep." });
+    session = bothContinue(settle(session));
+    expect(viewFor(game, session, A).moveRounds).toBe(1);
+    session = act(act(session, A, "pass"), B, "pass");
+    expect(session.state.stage).toBe("closing");
   });
 
   it("makes a bribe of cash backfire when the AI fails", () => {
@@ -344,12 +415,11 @@ describe("moves", () => {
 
 function toClosing(crossExam = false) {
   let session = begin();
-  session = act(session, A, "setup", { crossExam });
-  session = bothContinue(session);
+  session = bothContinue(agree(session, crossExam));
   session = act(session, A, "accuse", { text: "Stole the duvet." });
   session = act(session, B, "defend", { text: "Was asleep." });
   session = bothContinue(settle(session));
-  for (const player of [A, B, A, B]) session = act(session, player, "pass");
+  for (const player of [A, B]) session = act(session, player, "pass");
   return session;
 }
 
@@ -375,6 +445,8 @@ describe("cross-examination", () => {
     session = act(session, B, "answer", { text: "Because." });
     expect(session.state.stage).toBe("crossReact");
     session = bothContinue(settle(session));
+    expect(session.state.stage).toBe("moves");
+    session = act(act(session, A, "pass"), B, "pass");
     expect(session.state.stage).toBe("closing");
   });
 });
@@ -433,9 +505,15 @@ describe("closing and the verdict", () => {
       headline: "Duvet Thief Caught",
     });
     expect(session.state.stage).toBe("sealed");
-    expect(session.state.scores[A]).toBe(1);
+    const sealed = JSON.stringify(viewFor(game, session, A));
+    expect(sealed).not.toContain("Guilty!");
+    expect(sealed).not.toContain("Apologize to the duvet");
+    expect(viewFor(game, session, A).verdict).toBeNull();
+    expect(session.state.scores[A]).toBe(0);
     session = act(session, B, "breakSeal");
     expect(session.state.stage).toBe("verdict");
+    expect(session.state.scores[A]).toBe(1);
+    expect(viewFor(game, session, B).verdict?.guilty).toBe(true);
     session = bothContinue(session);
     expect(session.state.stage).toBe("punishment");
     expect(
@@ -468,6 +546,59 @@ describe("closing and the verdict", () => {
     session = act(session, B, "take", { option: 1 });
     expect(session.state.moods[B]).toBe("annoyed");
     expect(viewFor(game, session, A).take).toBe(1);
+  });
+});
+
+describe("the court record", () => {
+  it("keeps what was said, in order, for both players", () => {
+    let session = settle(toHearing(), { line: "A travesty." });
+    session = act(session, A, "object");
+    session = act(session, A, "argue", { ground: 0, argument: "Irrelevant!" });
+    session = settle(session, { line: "No.", sustained: false });
+    const labels = viewFor(game, session, B).record.map((e) => [
+      e.speaker,
+      e.label,
+      e.text,
+    ]);
+    expect(labels).toEqual([
+      [A, "Accusation", "Stole the duvet."],
+      [B, "Defense", "I did it for us."],
+      ["judge", "Judge", "A travesty."],
+      [A, "Objection: Irrelevant", "Irrelevant!"],
+      ["judge", "Overruled", "No."],
+    ]);
+    expect(viewFor(game, session, A).record).toEqual(
+      viewFor(game, session, B).record,
+    );
+  });
+
+  it("includes drawings, and carries over to the next case", () => {
+    let session = toMoves();
+    session = act(session, A, "move", {
+      kind: "evidence",
+      strokes: [[1, 2, 3, 4]],
+      caption: "Exhibit",
+    });
+    session = settle(session);
+    const exhibit = session.state.record.find((e) => e.label === "Exhibit A");
+    expect(exhibit?.strokes).toEqual([[1, 2, 3, 4]]);
+
+    let now = 1;
+    while (session.state.caseNumber === 1) {
+      session = settle(session, null, now);
+      now = session.state.deadline ?? now;
+      session = applyTimeout(game, session, now);
+    }
+    expect(session.state.record[0]?.caseNumber).toBe(1);
+  });
+
+  it("never reveals a lawyer's suggestion", () => {
+    let session = started();
+    session = act(session, A, "accuse", { text: "Stole the duvet." });
+    session = settle(act(session, B, "askLawyer"), {
+      suggestions: [{ style: "Sincere", text: "Secret idea" }],
+    });
+    expect(JSON.stringify(session.state.record)).not.toContain("Secret idea");
   });
 });
 
