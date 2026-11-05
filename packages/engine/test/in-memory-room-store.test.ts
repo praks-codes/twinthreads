@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryRoomStore } from "./in-memory-room-store.js";
-import type { RoomRecord } from "./types.js";
+import { InMemoryRoomStore } from "../src/in-memory-room-store.js";
+import type { RoomRecord } from "../src/types.js";
 
 const room: RoomRecord = {
   code: "ABC234",

@@ -20,3 +20,4 @@ Two-player browser games for couples, played in private rooms with a six-charact
 - Update `ARCHITECTURE.md` when a decision changes
 - Small commits, feature branches, pull requests into `main`
 - Ask before adding a new dependency
+- Tests live in a `test/` folder beside `src/` in each package, never inside `src/`

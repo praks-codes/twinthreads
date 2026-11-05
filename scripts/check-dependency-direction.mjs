@@ -48,9 +48,12 @@ for (const { dir, isGame } of packages) {
     }
   }
 
-  const src = join(dir, "src");
-  for (const file of sourceFiles(src)) {
-    const isTest = /\.test\.[cm]?[tj]sx?$/.test(file);
+  const testDir = join(dir, "test");
+  for (const file of [
+    ...sourceFiles(join(dir, "src")),
+    ...sourceFiles(testDir),
+  ]) {
+    const isTest = file.startsWith(testDir + sep);
     for (const [, spec] of readFileSync(file, "utf8").matchAll(IMPORT)) {
       const where = relative(root, file);
       if (spec.startsWith(".")) {

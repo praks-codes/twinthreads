@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, loadConfig } from "./config.js";
+import { ConfigError, loadConfig } from "../src/config.js";
 
 const valid = {
   NODE_ENV: "test",
