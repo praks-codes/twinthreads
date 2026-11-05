@@ -1,0 +1,877 @@
+@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Chango&display=swap");
+
+.page[data-game="court"] {
+  max-width: none;
+  padding: 0 0 var(--space-3);
+  gap: var(--space-2);
+  align-content: start;
+  background: #ff8fb8;
+  color: #3d0d33;
+}
+
+.page[data-game="court"] .page__header {
+  display: none;
+}
+
+.page[data-game="court"] .leave {
+  justify-self: center;
+  width: min(100%, 280px);
+  padding: 0 14px;
+}
+
+.court {
+  --ink: #3d0d33;
+  --butter: #ffe27a;
+  --sky: #8fd9ff;
+  --berry: #ff3b6b;
+  --paper: #fff4f9;
+  position: relative;
+  display: grid;
+  gap: 0;
+  color: var(--ink);
+  font-family: "Baloo 2", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  overflow-x: clip;
+}
+
+.court button {
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    transform 0.12s cubic-bezier(0.3, 1.8, 0.5, 1),
+    box-shadow 0.12s;
+  touch-action: manipulation;
+}
+
+.court button:active:not(:disabled) {
+  transform: translateY(4px) scale(0.97);
+}
+
+.court button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.court button:focus-visible,
+.court textarea:focus-visible,
+.court input:focus-visible {
+  outline: 4px solid #fff;
+  outline-offset: 2px;
+}
+
+.court textarea,
+.court input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 17px;
+  resize: none;
+}
+
+.court input {
+  min-height: 44px;
+}
+
+.court textarea {
+  min-height: 92px;
+}
+
+.court__top {
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--ink);
+  color: #fff;
+}
+
+.court__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.court-meter {
+  position: relative;
+  height: 22px;
+  border: 3px solid #fff;
+  border-radius: 14px;
+  background: var(--sky);
+}
+
+.court-meter__fill {
+  height: 100%;
+  border-radius: 10px 0 0 10px;
+  background: var(--butter);
+  transition: width 0.5s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.court-meter__spark {
+  position: absolute;
+  top: -10px;
+  width: 36px;
+  height: 36px;
+  margin-left: -18px;
+  transition: left 0.5s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.court-meter__spark svg {
+  display: block;
+  animation: court-spark 0.5s linear infinite;
+  fill: var(--berry);
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.court__layout {
+  display: grid;
+}
+
+.court__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 300px;
+  padding: 10px 14px 12px;
+}
+
+/* The stage is laid out for 390 units wide, and scales with its container. */
+.court-stage {
+  container-type: inline-size;
+  border-bottom: 4px solid var(--ink);
+  background: #ffc2d8;
+}
+
+.court-stage__inner {
+  --u: calc(100cqw / 390);
+  position: relative;
+  height: calc(var(--u) * 380);
+  overflow: hidden;
+  font-size: calc(var(--u) * 15);
+}
+
+.court-backheart {
+  position: absolute;
+  left: calc(var(--u) * 75);
+  top: calc(var(--u) * 10);
+  width: calc(var(--u) * 240);
+  fill: #ff8fb8;
+}
+
+.court-floor {
+  position: absolute;
+  inset: auto 0 0;
+  height: calc(var(--u) * 112);
+  border-top: 3px solid var(--ink);
+  background: repeating-conic-gradient(#fff4f9 0 25%, #ffd6e7 0 50%) 0 0 /
+    calc(var(--u) * 44) calc(var(--u) * 44);
+}
+
+.court-crowd {
+  position: absolute;
+  top: calc(var(--u) * 56);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: calc(var(--u) * 110);
+}
+
+.court-crowd--left {
+  left: calc(var(--u) * 26);
+}
+
+.court-crowd--right {
+  right: calc(var(--u) * 26);
+}
+
+.court-gummy {
+  display: block;
+  width: calc(var(--u) * 36);
+  margin: calc(var(--u) * -4) calc(var(--u) * -1);
+  line-height: 0;
+}
+
+.court-rail {
+  position: absolute;
+  top: calc(var(--u) * 142);
+  width: calc(var(--u) * 124);
+  height: calc(var(--u) * 18);
+  box-sizing: border-box;
+  border: 3px solid var(--ink);
+  border-radius: 9px;
+  background: repeating-linear-gradient(90deg, #fff4f9 0 9px, #ff3b6b 9px 18px);
+}
+
+.court-rail--left {
+  left: calc(var(--u) * 16);
+}
+
+.court-rail--right {
+  right: calc(var(--u) * 16);
+}
+
+.court-judge {
+  position: absolute;
+  left: calc(var(--u) * 139);
+  top: calc(var(--u) * 34);
+  width: calc(var(--u) * 112);
+  line-height: 0;
+}
+
+.court-bench {
+  position: absolute;
+  left: calc(var(--u) * 127);
+  top: calc(var(--u) * 128);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: calc(var(--u) * 136);
+  height: calc(var(--u) * 56);
+  border: 3px solid var(--ink);
+  border-radius: 12px 12px 6px 6px;
+  background: var(--butter);
+  box-shadow: inset 0 -7px 0 #f5c93f;
+}
+
+.court-bench svg {
+  width: calc(var(--u) * 30);
+  fill: var(--berry);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.court-curtains {
+  position: absolute;
+  inset: 0 0 auto;
+  width: 100%;
+  fill: var(--berry);
+  stroke: var(--ink);
+  stroke-width: 3;
+  pointer-events: none;
+}
+
+.court-shout {
+  position: absolute;
+  top: calc(var(--u) * 28);
+  padding: 0 calc(var(--u) * 7);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  font-family: Chango, sans-serif;
+  font-size: calc(var(--u) * 14);
+}
+
+.court-shout--left {
+  left: calc(var(--u) * 8);
+  background: var(--butter);
+  rotate: -5deg;
+}
+
+.court-shout--right {
+  right: calc(var(--u) * 8);
+  background: var(--sky);
+  rotate: 5deg;
+}
+
+.court-player {
+  position: absolute;
+  bottom: calc(var(--u) * 22);
+  width: calc(var(--u) * 72);
+  line-height: 0;
+  animation: court-sway 2.8s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+.court-player--left {
+  left: calc(var(--u) * 36);
+}
+
+.court-player--right {
+  right: calc(var(--u) * 36);
+  animation-delay: -1.2s;
+}
+
+.court-mood-emoji {
+  position: absolute;
+  top: calc(var(--u) * -6);
+  right: calc(var(--u) * -14);
+  font-size: calc(var(--u) * 22);
+  line-height: 1;
+}
+
+.court-emote {
+  position: absolute;
+  bottom: 70%;
+  left: 20%;
+  font-size: calc(var(--u) * 34);
+  line-height: 1;
+  animation: court-emote 1.8s ease-out both;
+  pointer-events: none;
+}
+
+.court-podium {
+  position: absolute;
+  bottom: 0;
+  width: calc(var(--u) * 116);
+  height: calc(var(--u) * 28);
+  box-sizing: border-box;
+  border: 3px solid var(--ink);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: calc(var(--u) * 14);
+  line-height: calc(var(--u) * 24);
+}
+
+.court-podium--left {
+  left: calc(var(--u) * 14);
+}
+
+.court-podium--right {
+  right: calc(var(--u) * 14);
+}
+
+.court-bubble {
+  position: absolute;
+  bottom: calc(var(--u) * 98);
+  z-index: 2;
+  width: calc(var(--u) * 180);
+  box-sizing: border-box;
+  padding: calc(var(--u) * 6) calc(var(--u) * 10);
+  border: 3px solid var(--ink);
+  background: #fff;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.court-bubble--left {
+  left: calc(var(--u) * 8);
+  border-radius: 16px 16px 16px 4px;
+}
+
+.court-bubble--right {
+  right: calc(var(--u) * 8);
+  border-radius: 16px 16px 4px 16px;
+}
+
+.court-exhibit {
+  position: absolute;
+  left: calc(var(--u) * 77);
+  top: calc(var(--u) * 26);
+  z-index: 3;
+  display: grid;
+  width: calc(var(--u) * 236);
+  box-sizing: border-box;
+  padding: calc(var(--u) * 4) calc(var(--u) * 8);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 5px 0 var(--ink);
+  text-align: center;
+  font-family: Chango, sans-serif;
+  font-size: calc(var(--u) * 13);
+}
+
+.court-exhibit strong {
+  font-weight: 400;
+}
+
+.court-exhibit path,
+.court-drawpad path {
+  fill: none;
+  stroke: var(--berry);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.court-kiss {
+  position: absolute;
+  left: calc(var(--u) * 95);
+  top: calc(var(--u) * 96);
+  z-index: 3;
+  width: calc(var(--u) * 200);
+  fill: var(--berry);
+  stroke: var(--ink);
+  stroke-width: 2.5;
+}
+
+.court-line {
+  padding: 6px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fff;
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.court-line--thinking {
+  background: var(--paper);
+  font-style: italic;
+}
+
+.court-emotes {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.court-emotes button {
+  flex: 1;
+  min-height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 45%);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.court-tabs,
+.court-grounds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.court-grounds {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.court-tab {
+  min-height: 44px;
+  padding: 0 2px;
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  background: var(--paper);
+  box-shadow: 0 3px 0 var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.court-tab[aria-pressed="true"],
+.court-card[aria-pressed="true"] {
+  background: var(--butter);
+}
+
+.court-cards {
+  display: grid;
+  gap: 7px;
+}
+
+.court-card {
+  display: grid;
+  gap: 1px;
+  min-height: 50px;
+  padding: 6px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 3px 0 var(--ink);
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.12;
+}
+
+.court-card strong {
+  font-family: Chango, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.court-field {
+  display: grid;
+  gap: 4px;
+  font-size: 15px;
+}
+
+.court-fill {
+  display: grid;
+  gap: 8px;
+}
+
+.court-big,
+.court-red,
+.court-plain,
+.court-lawyer {
+  border: 3px solid var(--ink);
+}
+
+.court-big {
+  min-height: 56px;
+  border-radius: 26px;
+  background: var(--butter);
+  box-shadow: 0 5px 0 var(--ink);
+  font-family: Chango, sans-serif !important;
+  font-size: 17px !important;
+}
+
+.court-red {
+  min-height: 62px;
+  border-radius: 30px;
+  background: var(--berry);
+  box-shadow: 0 5px 0 var(--ink);
+  color: #fff !important;
+  font-family: Chango, sans-serif !important;
+  font-size: 19px !important;
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+.court-plain {
+  min-height: 46px;
+  border-radius: 24px;
+  background: var(--paper);
+  box-shadow: 0 3px 0 var(--ink);
+  font-weight: 800;
+}
+
+.court-plain[aria-pressed="true"],
+.court-lawyer {
+  background: var(--sky);
+}
+
+.court-lawyer {
+  min-height: 56px;
+  border-radius: 26px;
+  box-shadow: 0 4px 0 var(--ink);
+  font-family: Chango, sans-serif !important;
+  font-size: 15px !important;
+}
+
+.court-plead {
+  flex: 1;
+  min-height: 170px;
+  border: 3px solid var(--ink);
+  border-radius: 34px;
+  background: var(--berry);
+  box-shadow: 0 7px 0 var(--ink);
+  color: #fff !important;
+  font-family: Chango, sans-serif !important;
+  font-size: 34px !important;
+  text-shadow: 2px 2px 0 var(--ink);
+  user-select: none;
+  touch-action: none !important;
+}
+
+.court-waiting {
+  margin: 0;
+  padding: 8px;
+  text-align: center;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.court-word {
+  text-align: center;
+  color: var(--butter);
+  font-family: Chango, sans-serif;
+  font-size: 38px;
+  line-height: 1.1;
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow: 0 5px 0 var(--ink);
+}
+
+.court-word--big {
+  padding: 18px 0;
+  font-size: 44px;
+}
+
+.court-word--white {
+  color: #fff;
+}
+
+.court-sentence {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: 0 5px 0 var(--ink);
+  text-align: center;
+}
+
+.court-sentence strong {
+  font-family: Chango, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.court-sentence span {
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.court-takes {
+  display: grid;
+  gap: 7px;
+  text-align: center;
+}
+
+.court-deciding {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 16px;
+  font-size: 18px;
+}
+
+.court-deciding svg {
+  width: 96px;
+  fill: var(--berry);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.court-deciding p,
+.court-envelope-wrap p {
+  margin: 0;
+}
+
+.court-envelope-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.court-envelope {
+  position: relative;
+  width: min(100%, 300px);
+  aspect-ratio: 300 / 186;
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: 0 7px 0 var(--ink);
+}
+
+.court-envelope__flap {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 57%;
+  border-radius: 17px 17px 0 0;
+  background: #ffd6e7;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.court-seal {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  width: 92px;
+  height: 92px;
+  margin-left: -46px;
+  padding: 18px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: var(--berry);
+  box-shadow:
+    inset 0 0 0 7px #d81e5b,
+    0 5px 0 var(--ink);
+}
+
+.court-seal svg {
+  display: block;
+  fill: var(--butter);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.court-drawpad {
+  width: 100%;
+  box-sizing: border-box;
+  border: 3px dashed var(--ink);
+  border-radius: 16px;
+  background: #fff;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.court-card-preview {
+  display: block;
+  width: min(100%, 320px);
+  margin: 0 auto;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+}
+
+.court-hearts {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.court-hearts svg {
+  position: absolute;
+  bottom: -40px;
+  animation: court-heart-rise 2.4s ease-out both;
+  fill: var(--berry);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.court-pop {
+  animation: court-pop 0.4s cubic-bezier(0.2, 1.7, 0.4, 1) both;
+}
+
+.court-wobble {
+  animation: court-wobble 2.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+.court-hop {
+  animation: court-hop 0.45s ease-in-out infinite alternate;
+}
+
+.court-stamp {
+  animation: court-stamp 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+.court-pulse {
+  animation: court-pulse 1.3s ease-in-out infinite;
+}
+
+.court-tear {
+  animation: court-pulse 0.9s ease-in-out infinite;
+  transform-origin: 50% 0;
+  transform-box: fill-box;
+}
+
+.court-steam {
+  animation: court-pulse 0.7s ease-in-out infinite;
+  transform-box: fill-box;
+}
+
+@keyframes court-pop {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes court-wobble {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes court-hop {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-20%);
+  }
+}
+
+@keyframes court-sway {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes court-stamp {
+  from {
+    transform: scale(3) rotate(-30deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(-6deg);
+    opacity: 1;
+  }
+}
+
+@keyframes court-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes court-spark {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3) rotate(45deg);
+  }
+}
+
+@keyframes court-emote {
+  from {
+    transform: translateY(0) scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-160%) scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes court-heart-rise {
+  from {
+    transform: translateY(0) scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-105vh) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* Laptops: the stage on the left, and the player's controls on the right. */
+@media (min-width: 900px) {
+  .page[data-game="court"] .court {
+    max-width: 1120px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .court__layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .court-stage {
+    border-right: 4px solid var(--ink);
+  }
+
+  .court__panel {
+    padding: 14px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .court *,
+  .court *::before {
+    animation: none !important;
+  }
+}

@@ -12,8 +12,9 @@ type GameScreen = LazyExoticComponent<ComponentType<GameScreenProps>>;
 
 // Each screen loads only when its game starts, so games never download each other.
 // The test game isn't included in production builds.
-export const gameScreens: Record<string, GameScreen> = import.meta.env.DEV
-  ? {
-      "test-game": lazy(() => import("./test-game/TestGameScreen.js")),
-    }
-  : {};
+export const gameScreens: Record<string, GameScreen> = {
+  court: lazy(() => import("./court/CourtScreen.js")),
+  ...(import.meta.env.DEV
+    ? { "test-game": lazy(() => import("./test-game/TestGameScreen.js")) }
+    : {}),
+};

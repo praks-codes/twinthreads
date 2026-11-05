@@ -56,7 +56,10 @@ export function RoomScreen({
   const GameScreen = state ? gameScreens[state.gameId] : undefined;
 
   return (
-    <main className="page page--room">
+    <main
+      className="page page--room"
+      data-game={state && !inLobby && !finished ? state.gameId : undefined}
+    >
       <header className="page__header">
         <h1 className="page__title">TwinThreads</h1>
       </header>
